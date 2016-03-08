@@ -886,6 +886,10 @@ void fct_mflo();
 void fct_multu();
 void fct_divu();
 void fct_addu();
+void fct_sllv();
+void fct_srlv();
+void fct_sll();
+void fct_srl();
 void fct_subu();
 void op_lw();
 void fct_slt();
@@ -5361,6 +5365,38 @@ void fct_divu() {
         }
         println();
     }
+}
+
+void fct_sllv(){
+    if(interpret){
+        *(registers + rd) = leftShift(*(registers + rt), *(registers + rs));
+        
+        pc = pc + WORDSIZE;
+    }    
+}
+
+void fct_srlv(){
+    if(interpret){
+        *(registers + rd) = rightShift(*(registers + rt), *(registers + rs));
+        
+        pc = pc + WORDSIZE;
+    }    
+}
+
+void fct_sll(){
+    if(interpret){
+        *(registers + rd) = leftShift(*(registers + rt), rs);
+        
+        pc = pc + WORDSIZE;
+    }    
+}
+
+void fct_srl(){
+    if(interpret){
+        *(registers + rd) = rightShift(*(registers + rt), rs);
+        
+        pc = pc + WORDSIZE;
+    }    
 }
 
 void fct_addu() {
