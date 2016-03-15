@@ -3729,6 +3729,10 @@ int getRD(int instruction) {
     return rightShift(leftShift(instruction, 16), 27);
 }
 
+int getShamt(int instruction) {
+    return rightShift(leftShift(instruction, 21), 27);
+}
+
 int getFunction(int instruction) {
     return rightShift(leftShift(instruction, 26), 26);
 }
@@ -3785,7 +3789,7 @@ void decodeRFormat() {
     rs          = getRS(ir);
     rt          = getRT(ir);
     rd          = getRD(ir);
-    immediate   = 0;
+    immediate   = getShamt(ir);
     function    = getFunction(ir);
     instr_index = 0;
 }
@@ -5385,7 +5389,7 @@ void fct_srlv(){
 
 void fct_sll(){
     if(interpret){
-        *(registers + rd) = leftShift(*(registers + rt), rs);
+        *(registers + rd) = leftShift(*(registers + rt), immediate);
         
         pc = pc + WORDSIZE;
     }    
@@ -5393,7 +5397,7 @@ void fct_sll(){
 
 void fct_srl(){
     if(interpret){
-        *(registers + rd) = rightShift(*(registers + rt), rs);
+        *(registers + rd) = rightShift(*(registers + rt), immediate);
         
         pc = pc + WORDSIZE;
     }    
