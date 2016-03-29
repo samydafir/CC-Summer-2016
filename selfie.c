@@ -12,7 +12,7 @@
 // undergraduate and graduate students the design and implementation
 // of programming languages and runtime systems. The focus is on the
 // construction of compilers, libraries, operating systems, and even
-// virtual machine monitors. The common theme is to identify and
+// virtual machine monitorisLeftOs. The common theme is to identify and
 // resolve self-reference in systems code which is seen as the key
 // challenge when teaching systems engineering, hence the name.
 //
@@ -269,6 +269,8 @@ int SYM_NOTEQ        = 24; // !=
 int SYM_MOD          = 25; // %
 int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
+int SYM_SHIFTL		 = 28; // <<
+int SYM_SHIFTR		 = 29; // >>
 
 int *SYMBOLS; // array of strings representing symbols
 
@@ -300,7 +302,7 @@ int sourceFD    = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-    SYMBOLS = malloc(28 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(30 * SIZEOFINTSTAR);
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
     *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -330,6 +332,8 @@ void initScanner () {
     *(SYMBOLS + SYM_MOD)          = (int) "%";
     *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
     *(SYMBOLS + SYM_STRING)       = (int) "string";
+	*(SYMBOLS + SYM_SHIFTL)		  = (int) "<<";
+	*(SYMBOLS + SYM_SHIFTR)		  = (int) ">>";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -666,7 +670,10 @@ void initDecoder() {
 
     FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
-    *(FUNCTIONS + FCT_SLL)     = (int) "nop";
+    *(FUNCTIONS + FCT_SLL)     = (int) "sll";
+	*(FUNCTIONS + FCT_SRL)     = (int) "srl";
+    *(FUNCTIONS + FCT_SLLV)    = (int) "sllv";
+    *(FUNCTIONS + FCT_SRLV)    = (int) "srlv";
     *(FUNCTIONS + FCT_JR)      = (int) "jr";
     *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
     *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
@@ -1877,12 +1884,13 @@ int getSymbol() {
 
     } else if (character == CHAR_LT) {
         getCharacter();
-
         if (character == CHAR_EQUAL) {
             getCharacter();
-
             symbol = SYM_LEQ;
-        } else
+		} else if(character == CHAR_LT){
+			getCharacter();
+			symbol = SYM_SHIFTL;
+		} else
             symbol = SYM_LT;
 
     } else if (character == CHAR_GT) {
@@ -1892,7 +1900,10 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_GEQ;
-        } else
+        } else if(character == CHAR_GT) {
+			getCharacter();
+			symbol = SYM_SHIFTR;
+		} else
             symbol = SYM_GT;
 
     } else if (character == CHAR_EXCLAMATION) {
@@ -2083,6 +2094,15 @@ int isPlusOrMinus() {
     if (symbol == SYM_MINUS)
         return 1;
     else if (symbol == SYM_PLUS)
+        return 1;
+    else
+        return 0;
+}
+
+int isLeftOrRightShift() {
+    if (symbol == SYM_SHIFTL)
+        return 1;
+    else if (symbol == SYM_SHIFTR)
         return 1;
     else
         return 0;
@@ -2775,6 +2795,31 @@ int gr_simpleExpression() {
     return ltype;
 }
 
+int gr_shiftExpression(){
+	int ltype;
+	int operatorSymbol;
+	int rtype;
+
+	ltype = gr_simpleExpression();
+	
+	if(isLeftOrRightShift()){
+		operatorSymbol = symbol;
+		getSymbol();
+		rtype = gr_simpleExpression();
+		if(ltype == INT_T){
+			if (ltype != rtype)
+            	typeWarning(ltype, rtype);
+			if (operatorSymbol == SYM_SHIFTL) {
+            	emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
+			} else {
+				emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+			}
+			tfree(1);
+		} else typeWarning(ltype, rtype);
+	}
+	return ltype;	
+}
+
 int gr_expression() {
     int ltype;
     int operatorSymbol;
@@ -2782,7 +2827,7 @@ int gr_expression() {
 
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression();
+    ltype = gr_shiftExpression();
 
     // assert: allocatedTemporaries == n + 1
 
@@ -2792,7 +2837,7 @@ int gr_expression() {
 
         getSymbol();
 
-        rtype = gr_simpleExpression();
+        rtype = gr_shiftExpression();
 
         // assert: allocatedTemporaries == n + 2
 
