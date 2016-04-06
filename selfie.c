@@ -430,7 +430,7 @@ int isExpression();
 int isLiteral();
 int isStarOrDivOrModulo();
 int isPlusOrMinus();
-int isLeftOrRightShift()
+int isLeftOrRightShift();
 int isComparison();
 
 int lookForFactor();
