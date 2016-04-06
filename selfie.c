@@ -430,6 +430,7 @@ int isExpression();
 int isLiteral();
 int isStarOrDivOrModulo();
 int isPlusOrMinus();
+int isLeftOrRightShift()
 int isComparison();
 
 int lookForFactor();
@@ -2818,7 +2819,7 @@ int gr_shiftExpression(){
 			tfree(1);
 		} else typeWarning(ltype, rtype);
 	}
-	return ltype;	
+	return ltype;
 }
 
 int gr_expression() {
