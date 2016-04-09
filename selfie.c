@@ -1188,9 +1188,9 @@ int leftShift(int n, int b) {
     // assert: b >= 0;
 
     if (b < 31)
-        return n * twoToThePowerOf(b);
+        return n << b;
     else if (b == 31)
-        return n * twoToThePowerOf(30) * 2;
+        return (n << 30) * 2;
     else
         return 0;
 }
@@ -1200,14 +1200,14 @@ int rightShift(int n, int b) {
 
     if (n >= 0) {
         if (b < 31)
-            return n / twoToThePowerOf(b);
+            return n  >>  b;
         else
             return 0;
     } else if (b < 31)
         // works even if n == INT_MIN:
         // shift right n with msb reset and then restore msb
-        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-            (INT_MAX / twoToThePowerOf(b) + 1);
+        return (((n + 1) + INT_MAX)  >> b) +
+				 ((INT_MAX >> b) + 1);         // nur msb >> b zb. 10000000 >> 3 = 00010000
     else if (b == 31)
         return 1;
     else
@@ -6686,6 +6686,12 @@ int main(int argc, int *argv) {
     
     print((int *)"This is the Starc Mipsdustries Selfie");
     println();
+
+	//int x;
+	//x = 97 >> 1;
+	//print(itoa(-6 + (INT_MIN ), string_buffer, 10, 0, 0));
+	//println();
+	//print(itoa(-6 >> 1, string_buffer, 10, 0, 0));
 
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
