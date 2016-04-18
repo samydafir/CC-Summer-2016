@@ -2963,9 +2963,13 @@ int gr_expression() {
     // assert: n = allocatedTemporaries
 
     ltype = gr_shiftExpression(tempResult);
+    
     localResult = *tempResult;
     localFlag = *(tempResult + 1);
-
+    
+    if(localFlag == 1){
+        load_integer(localResult);
+    }
 
     // assert: allocatedTemporaries == n + 1
 
@@ -2977,22 +2981,10 @@ int gr_expression() {
 
         rtype = gr_shiftExpression(tempResult);
 
-        if(localFlag == 1){
-            if(*(tempResult+1) == 1){
-            load_integer(localResult);
+        if(*(tempResult + 1) == 1){
             load_integer(*tempResult);
-            }else{
-                int temp = currentTemporary();
-                tfree(1);
-                load_integer(localResult);
-                load_integer(temp);
-            }
-        }else{
-            if(*(tempResult+1) == 1){
-                load_integer(*tempResult);
-            }
         }
-
+        
         // assert: allocatedTemporaries == n + 2
 
         if (ltype != rtype)
