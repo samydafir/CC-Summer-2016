@@ -2639,10 +2639,14 @@ int gr_factor() {
         } else
             // variable access: identifier
             type = load_variable(variableOrProcedureName);
+			
+			*(tempResult + 1) = 0; 
 
     // integer?
     } else if (symbol == SYM_INTEGER) {
-        load_integer(literal);
+		*(tempResult + 1) = 1;
+		*tempResult = literal;
+        //load_integer(literal);
 
         getSymbol();
 
@@ -2839,6 +2843,7 @@ int gr_expression() {
     int ltype;
     int operatorSymbol;
     int rtype;
+	int *tempResult = malloc(8);
 
     // assert: n = allocatedTemporaries
 
