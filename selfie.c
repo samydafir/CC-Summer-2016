@@ -461,10 +461,10 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int *procedure);
-int  gr_factor();
-int  gr_term();
-int  gr_simpleExpression();
-int  gr_shiftExpression();
+int  gr_factor(int* tempResult);
+int  gr_term(int* tempResult);
+int  gr_simpleExpression(int* tempResult);
+int  gr_shiftExpression(int* tempResult);
 int  gr_expression();
 void gr_while();
 void gr_if();
@@ -2648,7 +2648,7 @@ int gr_factor(int* tempResult) {
     } else if (symbol == SYM_INTEGER) {
         *tempResult = literal;
         //load_integer(literal);
-        *(tempResult + 1) = 1;
+        *(tempResult + 1) = 0;
 
         getSymbol();
 
