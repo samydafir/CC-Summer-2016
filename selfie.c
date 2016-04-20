@@ -2648,7 +2648,7 @@ int gr_factor(int* tempResult) {
     } else if (symbol == SYM_INTEGER) {
         *tempResult = literal;
         //load_integer(literal);
-        *(tempResult + 1) = 0;
+        *(tempResult + 1) = 1;
 
         getSymbol();
 
@@ -2802,7 +2802,7 @@ int gr_simpleExpression(int* tempResult) {
     ltype = gr_term(tempResult);
 
     // assert: allocatedTemporaries == n + 1
-
+    print(itoa(sign,string_buffer,10,0,0));
     if (sign) {
         if (ltype != INT_T) {
             typeWarning(INT_T, ltype);
@@ -2810,7 +2810,10 @@ int gr_simpleExpression(int* tempResult) {
             ltype = INT_T;
         }
         if(*(tempResult + 1) == 1){
+            print(itoa(*tempResult,string_buffer,10,0,0));
             *tempResult = 0 - *tempResult;
+            print(itoa(*tempResult,string_buffer,10,0,0));
+            println();
         }else{
             emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);  
         }
@@ -2935,10 +2938,13 @@ int gr_expression() {
     int rtype;
     int* tempResult;
     tempResult = malloc(8);
+    *tempResult = 0;
+    *(tempResult + 1) = 0;
 
     // assert: n = allocatedTemporaries
 
     ltype = gr_shiftExpression(tempResult);
+    
     if(*(tempResult + 1) == 1){
         load_integer(*tempResult);
     }
