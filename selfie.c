@@ -2648,9 +2648,9 @@ int gr_factor() {
 
     // integer?
     } else if (symbol == SYM_INTEGER) {
-        tempValue = literal;
-        tempFlag = 1;
-        //load_integer(literal);
+        //tempValue = literal;
+        tempFlag = 0;
+        load_integer(literal);
 
         getSymbol();
 
