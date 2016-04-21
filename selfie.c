@@ -2648,6 +2648,7 @@ int gr_factor() {
 
     // integer?
     } else if (symbol == SYM_INTEGER) {
+        //to use constant folding set tempFlag to 1 ,uncomment next line and comment load_integer
         //tempValue = literal;
         tempFlag = 0;
         load_integer(literal);
