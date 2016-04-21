@@ -2191,7 +2191,6 @@ int lookForType() {
 
 void talloc() {
     // we use registers REG_T0-REG_T7 for temporaries
-    print(itoa(allocatedTemporaries,string_buffer,10,0,0));
     if (allocatedTemporaries < REG_T7 - REG_A3)
         allocatedTemporaries = allocatedTemporaries + 1;
     else {
@@ -6792,6 +6791,7 @@ int selfie(int argc, int* argv) {
 }
 
 int main(int argc, int *argv) {
+
     initLibrary();
 
     initScanner();
@@ -6808,12 +6808,6 @@ int main(int argc, int *argv) {
     
     print((int *)"This is the Starc Mipsdustries Selfie");
     println();
-
-	//int x;
-	//x = 97 >> 1;
-	//print(itoa(-6 + (INT_MIN ), string_buffer, 10, 0, 0));
-	//println();
-	//print(itoa(-6 >> 1, string_buffer, 10, 0, 0));
 
     if (selfie(argc, (int*) argv) != 0) {
         print(selfieName);
