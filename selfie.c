@@ -1190,9 +1190,9 @@ int leftShift(int n, int b) {
     // assert: b >= 0;
 
     if (b < 31)
-        return n << b;
+        return n * twoToThePowerOf(b);
     else if (b == 31)
-        return (n << 30) * 2;
+        return n * twoToThePowerOf(30) * 2;
     else
         return 0;
 }
@@ -1202,14 +1202,14 @@ int rightShift(int n, int b) {
 
     if (n >= 0) {
         if (b < 31)
-            return n  >>  b;
+            return n / twoToThePowerOf(b);
         else
             return 0;
     } else if (b < 31)
         // works even if n == INT_MIN:
         // shift right n with msb reset and then restore msb
-        return (((n + 1) + INT_MAX)  >> b) +
-				 ((INT_MAX >> b) + 1);         // nur msb >> b zb. 10000000 >> 3 = 00010000
+        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
+            (INT_MAX / twoToThePowerOf(b) + 1);
     else if (b == 31)
         return 1;
     else
