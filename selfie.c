@@ -2640,7 +2640,6 @@ int gr_factor() {
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
-    print((int*)"bla");
     rightFlag = 1;
     rightValue = literal;
     //load_integer(rightValue);
@@ -2828,6 +2827,10 @@ int gr_simpleExpression() {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int leftValue;
+  int leftFlag;
+  leftFlag = 0;
+  leftValue = 0;
 
   // assert: n = allocatedTemporaries
 
@@ -2853,11 +2856,9 @@ int gr_simpleExpression() {
     sign = 0;
 
   ltype = gr_term();
-  if(rightFlag == 1){
-    load_integer(rightValue);
-    rightFlag = 0;
-    rightValue = 0;
-  }
+  leftFlag = rightFlag;
+  leftValue = rightValue;
+
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2867,8 +2868,11 @@ int gr_simpleExpression() {
 
       ltype = INT_T;
     }
-
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    if(leftFlag == 1){
+      leftValue = 0 - leftValue;
+    }else{
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    }
   }
 
   // + or -?
@@ -2878,32 +2882,75 @@ int gr_simpleExpression() {
     getSymbol();
 
     rtype = gr_term();
-    if(rightFlag == 1){
-      load_integer(rightValue);
-      rightFlag = 0;
-      rightValue = 0;
-    }
 
     // assert: allocatedTemporaries == n + 2
 
     if (operatorSymbol == SYM_PLUS) {
       if (ltype == INTSTAR_T) {
-        if (rtype == INT_T)
+        if (rtype == INT_T){
+          if(rightFlag == 1){
+            load_integer(rightValue);
+            rightFlag = 0;
+            rightValue = 0;
+          }
           // pointer arithmetic: factor of 2^2 of integer operand
           emitLeftShiftBy(2);
-      } else if (rtype == INTSTAR_T)
+        }
+      } else if (rtype == INTSTAR_T){
         typeWarning(ltype, rtype);
-
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      }
+      if(leftFlag == 1){
+        if(rightFlag == 1){
+          rightValue = leftValue + rightValue;
+          leftValue = rightValue;
+        }else{
+          load_integer(leftValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+          tfree(1);
+          leftValue = 0;
+          leftFlag = 0;
+        }
+      }else{
+        if(rightFlag == 1){
+          load_integer(rightValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
+          tfree(1);
+          rightValue = 0;
+          rightFlag = 0;
+        }else{
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
+          tfree(1);
+        }
+      }
 
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      if(leftFlag == 1){
+        if(rightFlag == 1){
+          rightValue = leftValue - rightValue;
+          leftValue = rightValue;
+        }else{
+          load_integer(leftValue);
+          emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
+          tfree(1);
+          leftFlag = 0;
+          leftValue = 0;
+        }
+      }else{
+        if(rightFlag == 1){
+          load_integer(rightValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+          tfree(1);
+          rightFlag = 0;
+          rightValue = 0;
+        }else{
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+          tfree(1);
+        }
+      }
     }
-
-    tfree(1);
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -2917,11 +2964,21 @@ int gr_shiftExpression(){
 	int rtype;
 
 	ltype = gr_simpleExpression();
+  if(rightFlag == 1){
+    load_integer(rightValue);
+    rightValue = 0;
+    rightFlag = 0;
+  }
 
 	while(isLeftOrRightShift()){
 		operatorSymbol = symbol;
 		getSymbol();
 		rtype = gr_simpleExpression();
+    if(rightFlag == 1){
+      load_integer(rightValue);
+      rightValue = 0;
+      rightFlag = 0;
+    }
 		if(ltype == INT_T){
 			if (ltype != rtype)
             	typeWarning(ltype, rtype);
