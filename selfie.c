@@ -172,6 +172,8 @@ int S_IRUSR_IWUSR_IRGRP_IROTH = 420; // flags for rw-r--r-- file permissions
 
 int* outputName = (int*) 0;
 int  outputFD   = 1;
+int rightValue;
+int rightFlag;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2535,9 +2537,10 @@ int gr_factor() {
   int type;
 
   int* variableOrProcedureName;
-
+  //print((int*)"bla");
   // assert: n = allocatedTemporaries
-
+  rightFlag = 0;
+  rightValue = 0;
   hasCast = 0;
 
   type = INT_T;
@@ -2637,7 +2640,10 @@ int gr_factor() {
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
-    load_integer(literal);
+    print((int*)"bla");
+    rightFlag = 1;
+    rightValue = literal;
+    //load_integer(rightValue);
 
     getSymbol();
 
@@ -2686,10 +2692,16 @@ int gr_term() {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int leftValue;
+  int leftFlag;
+  leftValue = 0;
+  leftFlag = 0;
 
   // assert: n = allocatedTemporaries
 
   ltype = gr_factor();
+  leftValue = rightValue;
+  leftFlag = rightFlag;
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2707,19 +2719,103 @@ int gr_term() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_ASTERISK) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      if(leftFlag == 1){
+        if(rightFlag == 1){
+          rightValue = leftValue * rightValue;
+          leftValue = rightFlag;
+        }else{
+          load_integer(leftValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          tfree(1);
+          leftFlag = 0;
+          leftValue = 0;
+          rightValue = 0;
+        }
+      }else{
+        if(rightFlag == 1){
+          load_integer(rightValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          tfree(1);
+          rightFlag = 0;
+          leftValue = 0;
+          rightValue = 0;
+        }else{
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          tfree(1);
+          leftValue = 0;
+          rightValue = 0;
+        }
+      }
+
 
     } else if (operatorSymbol == SYM_DIV) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      if(leftFlag == 1){
+        if(rightFlag == 1){
+          rightValue = leftValue / rightValue;
+          leftValue = rightValue;
+        }else{
+          load_integer(leftValue);
+          emitRFormat(OP_SPECIAL,currentTemporary() , previousTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          tfree(1);
+          leftFlag = 0;
+          leftValue = 0;
+          rightValue = 0;
+        }
+      }else{
+        if(rightFlag == 1){
+          load_integer(rightValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          tfree(1);
+          rightFlag = 0;
+          leftValue = 0;
+          rightValue = 0;
+        }else{
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          tfree(1);
+          leftValue = 0;
+          rightValue = 0;
+        }
+      }
+
 
     } else if (operatorSymbol == SYM_MOD) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
-    }
+      if(leftFlag == 1){
+        if(rightFlag == 1){
+          rightValue = leftValue % rightValue;
+          leftValue = rightValue;
+        }else{
+          load_integer(leftValue);
+          emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+          tfree(1);
+          leftFlag = 0;
+          rightValue = 0;
+          leftValue = 0;
+        }
+      }else{
+        if(rightFlag == 1){
+          load_integer(rightValue);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+          tfree(1);
+          leftValue = 0;
+          rightValue = 0;
+          rightFlag = 0;
+        }else{
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+          tfree(1);
+        }
+      }
 
-    tfree(1);
+
+    }
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -2757,6 +2853,11 @@ int gr_simpleExpression() {
     sign = 0;
 
   ltype = gr_term();
+  if(rightFlag == 1){
+    load_integer(rightValue);
+    rightFlag = 0;
+    rightValue = 0;
+  }
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2777,6 +2878,11 @@ int gr_simpleExpression() {
     getSymbol();
 
     rtype = gr_term();
+    if(rightFlag == 1){
+      load_integer(rightValue);
+      rightFlag = 0;
+      rightValue = 0;
+    }
 
     // assert: allocatedTemporaries == n + 2
 
