@@ -2962,32 +2962,74 @@ int gr_shiftExpression(){
 	int ltype;
 	int operatorSymbol;
 	int rtype;
+  int leftFlag;
+  int leftValue;
+  leftValue = 0;
+  leftFlag = 0;
 
 	ltype = gr_simpleExpression();
-  if(rightFlag == 1){
-    load_integer(rightValue);
-    rightValue = 0;
-    rightFlag = 0;
-  }
+  leftFlag = rightFlag;
+  leftValue = rightValue;
+
 
 	while(isLeftOrRightShift()){
 		operatorSymbol = symbol;
 		getSymbol();
 		rtype = gr_simpleExpression();
-    if(rightFlag == 1){
-      load_integer(rightValue);
-      rightValue = 0;
-      rightFlag = 0;
-    }
+
 		if(ltype == INT_T){
 			if (ltype != rtype)
-            	typeWarning(ltype, rtype);
+          typeWarning(ltype, rtype);
 			if (operatorSymbol == SYM_SHIFTL) {
-            	emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
-			} else {
-				emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+        if(leftFlag == 1){
+          if(rightFlag == 1){
+            rightValue = leftValue << rightValue;
+            leftValue = rightValue;
+          }else{
+            load_integer(leftValue);
+            emitRFormat(OP_SPECIAL, previousTemporary(),currentTemporary() , previousTemporary(), FCT_SLLV);
+            tfree(1);
+            leftValue = 0;
+            leftFlag = 0;
+          }
+        }else{
+          if(rightFlag == 1){
+            load_integer(rightValue);
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
+            tfree(1);
+            rightValue = 0;
+            rightFlag = 0;
+          }else{
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
+            tfree(1);
+          }
+        }
+
+			} else if(operatorSymbol == SYM_SHIFTR) {
+        if(leftFlag == 1){
+          if(rightFlag == 1){
+            rightValue = leftValue >> rightValue;
+            leftValue = rightValue;
+          }else{
+            load_integer(leftValue);
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRLV);
+            tfree(1);
+            leftValue = 0;
+            leftFlag = 0;
+          }
+        }else{
+          if(rightFlag == 1){
+            load_integer(rightValue);
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+            tfree(1);
+            rightValue = 0;
+            rightFlag = 0;
+          }else{
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+            tfree(1);
+          }
+        }
 			}
-			tfree(1);
 		} else typeWarning(ltype, rtype);
 	}
 	return ltype;
@@ -3001,6 +3043,11 @@ int gr_expression() {
   // assert: n = allocatedTemporaries
 
   ltype = gr_shiftExpression();
+  if(rightFlag == 1){
+    load_integer(rightValue);
+    rightValue = 0;
+    rightFlag = 0;
+  }
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3011,6 +3058,11 @@ int gr_expression() {
     getSymbol();
 
     rtype = gr_shiftExpression();
+    if(rightFlag == 1){
+      load_integer(rightValue);
+      rightValue = 0;
+      rightFlag = 0;
+    }
 
     // assert: allocatedTemporaries == n + 2
 
