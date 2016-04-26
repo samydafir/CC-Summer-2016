@@ -725,7 +725,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 131072; // 128KB
+int maxBinaryLength = 200000; // 128KB //131072
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2545,6 +2545,8 @@ int gr_factor() {
 
   type = INT_T;
 
+  print((int*)"factor!");
+
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -2721,7 +2723,7 @@ int gr_term() {
       if(leftFlag == 1){
         if(rightFlag == 1){
           rightValue = leftValue * rightValue;
-          leftValue = rightFlag;
+          leftValue = rightValue;
         }else{
           load_integer(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
@@ -2986,6 +2988,9 @@ int gr_shiftExpression(){
             rightValue = leftValue << rightValue;
             leftValue = rightValue;
           }else{
+            print((int*)"llv: ");
+            print(itoa(leftValue, string_buffer,10,0,0));
+            println();
             load_integer(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(),currentTemporary() , previousTemporary(), FCT_SLLV);
             tfree(1);
@@ -2994,6 +2999,11 @@ int gr_shiftExpression(){
           }
         }else{
           if(rightFlag == 1){
+            print((int*)"lrv: ");
+            print(itoa(rightValue, string_buffer,10,0,0));
+            print((int*)"n: ");
+            print(itoa(currentTemporary(), string_buffer,10,0,0));
+            println();
             load_integer(rightValue);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             tfree(1);
@@ -3011,6 +3021,9 @@ int gr_shiftExpression(){
             rightValue = leftValue >> rightValue;
             leftValue = rightValue;
           }else{
+            print((int*)"rlv: ");
+            print(itoa(leftValue, string_buffer,10,0,0));
+            println();
             load_integer(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
@@ -3019,6 +3032,9 @@ int gr_shiftExpression(){
           }
         }else{
           if(rightFlag == 1){
+            print((int*)"rrv: ");
+            print(itoa(rightValue, string_buffer,10,0,0));
+            println();
             load_integer(rightValue);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
