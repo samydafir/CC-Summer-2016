@@ -2721,7 +2721,7 @@ int gr_term() {
       if(leftFlag == 1){
         if(rightFlag == 1){
           rightValue = leftValue * rightValue;
-          leftValue = rightFlag;
+          leftValue = rightValue;
         }else{
           load_integer(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
