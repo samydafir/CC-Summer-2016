@@ -455,6 +455,7 @@ void typeWarning(int expected, int found);
 
 int* getVariable(int* variable);
 int  load_variable(int* variable);
+void load_cfValue(int cfValue);
 void load_integer(int value);
 void load_string(int* string);
 
@@ -2333,8 +2334,18 @@ int load_variable(int* variable) {
   return getType(entry);
 }
 
+void load_cfValue(int cfValue){
+  if(cfValue < 0){
+    cfValue = - cfValue;
+    load_integer(cfValue);
+    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+  }else{
+    load_integer(cfValue);
+  }
+}
+
 void load_integer(int value) {
-  // assert: value >= 0 or value == INT_MIN
+  // assert: valu>= 0 or value == INT_MIN
 
   talloc();
 
@@ -2537,15 +2548,13 @@ int gr_factor() {
   int type;
 
   int* variableOrProcedureName;
-  //print((int*)"bla");
+
   // assert: n = allocatedTemporaries
   rightFlag = 0;
   rightValue = 0;
   hasCast = 0;
 
   type = INT_T;
-
-  print((int*)"factor!");
 
   while (lookForFactor()) {
     syntaxErrorUnexpected();
@@ -2644,7 +2653,6 @@ int gr_factor() {
   } else if (symbol == SYM_INTEGER) {
     rightFlag = 1;
     rightValue = literal;
-    //load_integer(rightValue);
 
     getSymbol();
 
@@ -2725,7 +2733,7 @@ int gr_term() {
           rightValue = leftValue * rightValue;
           leftValue = rightValue;
         }else{
-          load_integer(leftValue);
+          load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
@@ -2735,7 +2743,7 @@ int gr_term() {
         }
       }else{
         if(rightFlag == 1){
-          load_integer(rightValue);
+          load_cfValue(rightValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
@@ -2758,7 +2766,7 @@ int gr_term() {
           rightValue = leftValue / rightValue;
           leftValue = rightValue;
         }else{
-          load_integer(leftValue);
+          load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL,currentTemporary() , previousTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
@@ -2768,7 +2776,7 @@ int gr_term() {
         }
       }else{
         if(rightFlag == 1){
-          load_integer(rightValue);
+          load_cfValue(rightValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
@@ -2791,7 +2799,7 @@ int gr_term() {
           rightValue = leftValue % rightValue;
           leftValue = rightValue;
         }else{
-          load_integer(leftValue);
+          load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
           tfree(1);
@@ -2801,7 +2809,7 @@ int gr_term() {
         }
       }else{
         if(rightFlag == 1){
-          load_integer(rightValue);
+          load_cfValue(rightValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
           tfree(1);
@@ -2891,7 +2899,7 @@ int gr_simpleExpression() {
       if (ltype == INTSTAR_T) {
         if (rtype == INT_T){
           if(rightFlag == 1){
-            load_integer(rightValue);
+            load_cfValue(rightValue);
             rightFlag = 0;
             rightValue = 0;
           }
@@ -2906,7 +2914,7 @@ int gr_simpleExpression() {
           rightValue = leftValue + rightValue;
           leftValue = rightValue;
         }else{
-          load_integer(leftValue);
+          load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
           tfree(1);
           leftValue = 0;
@@ -2914,7 +2922,7 @@ int gr_simpleExpression() {
         }
       }else{
         if(rightFlag == 1){
-          load_integer(rightValue);
+          load_cfValue(rightValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
           tfree(1);
           rightValue = 0;
@@ -2934,7 +2942,7 @@ int gr_simpleExpression() {
           rightValue = leftValue - rightValue;
           leftValue = rightValue;
         }else{
-          load_integer(leftValue);
+          load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
           leftFlag = 0;
@@ -2942,7 +2950,7 @@ int gr_simpleExpression() {
         }
       }else{
         if(rightFlag == 1){
-          load_integer(rightValue);
+          load_cfValue(rightValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
           rightFlag = 0;
@@ -2988,10 +2996,7 @@ int gr_shiftExpression(){
             rightValue = leftValue << rightValue;
             leftValue = rightValue;
           }else{
-            print((int*)"llv: ");
-            print(itoa(leftValue, string_buffer,10,0,0));
-            println();
-            load_integer(leftValue);
+            load_cfValue(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(),currentTemporary() , previousTemporary(), FCT_SLLV);
             tfree(1);
             leftValue = 0;
@@ -2999,12 +3004,7 @@ int gr_shiftExpression(){
           }
         }else{
           if(rightFlag == 1){
-            print((int*)"lrv: ");
-            print(itoa(rightValue, string_buffer,10,0,0));
-            print((int*)"n: ");
-            print(itoa(currentTemporary(), string_buffer,10,0,0));
-            println();
-            load_integer(rightValue);
+            load_cfValue(rightValue);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             tfree(1);
             rightValue = 0;
@@ -3021,10 +3021,7 @@ int gr_shiftExpression(){
             rightValue = leftValue >> rightValue;
             leftValue = rightValue;
           }else{
-            print((int*)"rlv: ");
-            print(itoa(leftValue, string_buffer,10,0,0));
-            println();
-            load_integer(leftValue);
+            load_cfValue(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
             leftValue = 0;
@@ -3032,10 +3029,7 @@ int gr_shiftExpression(){
           }
         }else{
           if(rightFlag == 1){
-            print((int*)"rrv: ");
-            print(itoa(rightValue, string_buffer,10,0,0));
-            println();
-            load_integer(rightValue);
+            load_cfValue(rightValue);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
             rightValue = 0;
@@ -3060,7 +3054,7 @@ int gr_expression() {
 
   ltype = gr_shiftExpression();
   if(rightFlag == 1){
-    load_integer(rightValue);
+    load_cfValue(rightValue);
     rightValue = 0;
     rightFlag = 0;
   }
@@ -3075,7 +3069,7 @@ int gr_expression() {
 
     rtype = gr_shiftExpression();
     if(rightFlag == 1){
-      load_integer(rightValue);
+      load_cfValue(rightValue);
       rightValue = 0;
       rightFlag = 0;
     }
@@ -6893,8 +6887,8 @@ int main(int argc, int* argv) {
   println();
 
 	//int x;
-	//x = 97 >> 1;
-	//print(itoa(-6 + (INT_MIN ), string_buffer, 10, 0, 0));
+	//x = 1 - 2;
+	//print(itoa(-1 - 5, string_buffer, 10, 0, 0));
 	//println();
 	//print(itoa(-6 >> 1, string_buffer, 10, 0, 0));
 
