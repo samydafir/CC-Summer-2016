@@ -172,8 +172,6 @@ int S_IRUSR_IWUSR_IRGRP_IROTH = 420; // flags for rw-r--r-- file permissions
 
 int* outputName = (int*) 0;
 int  outputFD   = 1;
-int rightValue;
-int rightFlag;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -464,10 +462,10 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure);
-int  gr_factor();
-int  gr_term();
-int  gr_simpleExpression();
-int  gr_shiftExpression();
+int  gr_factor(int* cfResult);
+int  gr_term(int* cfResult);
+int  gr_simpleExpression(int* cfResult);
+int  gr_shiftExpression(int* cfResult);
 int  gr_expression();
 void gr_while();
 void gr_if();
@@ -2542,7 +2540,7 @@ int gr_call(int* procedure) {
   return type;
 }
 
-int gr_factor() {
+int gr_factor(int* cfResult) {
   int hasCast;
   int cast;
   int type;
@@ -2550,8 +2548,8 @@ int gr_factor() {
   int* variableOrProcedureName;
 
   // assert: n = allocatedTemporaries
-  rightFlag = 0;
-  rightValue = 0;
+  *(cfResult + 1) = 0;
+  *cfResult = 0;
   hasCast = 0;
 
   type = INT_T;
@@ -2651,8 +2649,8 @@ int gr_factor() {
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
-    rightFlag = 1;
-    rightValue = literal;
+    *(cfResult + 1) = 1;
+    *cfResult = literal;
 
     getSymbol();
 
@@ -2697,7 +2695,7 @@ int gr_factor() {
     return type;
 }
 
-int gr_term() {
+int gr_term(int* cfResult) {
   int ltype;
   int operatorSymbol;
   int rtype;
@@ -2708,9 +2706,9 @@ int gr_term() {
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_factor();
-  leftValue = rightValue;
-  leftFlag = rightFlag;
+  ltype = gr_factor(cfResult);
+  leftValue = *cfResult;
+  leftFlag = *(cfResult + 1);
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2720,7 +2718,7 @@ int gr_term() {
 
     getSymbol();
 
-    rtype = gr_factor();
+    rtype = gr_factor(cfResult);
 
     // assert: allocatedTemporaries == n + 2
 
@@ -2729,9 +2727,9 @@ int gr_term() {
 
     if (operatorSymbol == SYM_ASTERISK) {
       if(leftFlag == 1){
-        if(rightFlag == 1){
-          rightValue = leftValue * rightValue;
-          leftValue = rightValue;
+        if(*(cfResult + 1) == 1){
+          *cfResult = leftValue * *cfResult;
+          leftValue = *cfResult;
         }else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
@@ -2739,32 +2737,28 @@ int gr_term() {
           tfree(1);
           leftFlag = 0;
           leftValue = 0;
-          rightValue = 0;
         }
       }else{
-        if(rightFlag == 1){
-          load_cfValue(rightValue);
+        if(*(cfResult + 1) == 1){
+          load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
-          rightFlag = 0;
-          leftValue = 0;
-          rightValue = 0;
+          *cfResult = 0;
+          *(cfResult + 1) = 0;
         }else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
-          leftValue = 0;
-          rightValue = 0;
         }
       }
 
 
     } else if (operatorSymbol == SYM_DIV) {
       if(leftFlag == 1){
-        if(rightFlag == 1){
-          rightValue = leftValue / rightValue;
-          leftValue = rightValue;
+        if(*(cfResult + 1) == 1){
+          *cfResult = leftValue / *cfResult;
+          leftValue = *cfResult;
         }else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL,currentTemporary() , previousTemporary(), 0, FCT_DIVU);
@@ -2772,58 +2766,50 @@ int gr_term() {
           tfree(1);
           leftFlag = 0;
           leftValue = 0;
-          rightValue = 0;
         }
       }else{
-        if(rightFlag == 1){
-          load_cfValue(rightValue);
+        if(*(cfResult + 1) == 1){
+          load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
-          rightFlag = 0;
-          leftValue = 0;
-          rightValue = 0;
+          *(cfResult + 1) = 0;
+          *cfResult = 0;
         }else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
-          leftValue = 0;
-          rightValue = 0;
         }
       }
 
 
     } else if (operatorSymbol == SYM_MOD) {
       if(leftFlag == 1){
-        if(rightFlag == 1){
-          rightValue = leftValue % rightValue;
-          leftValue = rightValue;
+        if(*(cfResult + 1) == 1){
+          *cfResult = leftValue % *cfResult;
+          leftValue = *cfResult;
         }else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
           tfree(1);
           leftFlag = 0;
-          rightValue = 0;
           leftValue = 0;
         }
       }else{
-        if(rightFlag == 1){
-          load_cfValue(rightValue);
+        if(*(cfResult + 1) == 1){
+          load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
           tfree(1);
-          leftValue = 0;
-          rightValue = 0;
-          rightFlag = 0;
+          *cfResult = 0;
+          *(cfResult + 1) = 0;
         }else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
           tfree(1);
         }
       }
-
-
     }
   }
 
@@ -2832,7 +2818,7 @@ int gr_term() {
   return ltype;
 }
 
-int gr_simpleExpression() {
+int gr_simpleExpression(int* cfResult) {
   int sign;
   int ltype;
   int operatorSymbol;
@@ -2865,9 +2851,9 @@ int gr_simpleExpression() {
   } else
     sign = 0;
 
-  ltype = gr_term();
-  leftFlag = rightFlag;
-  leftValue = rightValue;
+  ltype = gr_term(cfResult);
+  leftFlag = *(cfResult + 1);
+  leftValue = *cfResult;
 
 
   // assert: allocatedTemporaries == n + 1
@@ -2891,17 +2877,17 @@ int gr_simpleExpression() {
 
     getSymbol();
 
-    rtype = gr_term();
+    rtype = gr_term(cfResult);
 
     // assert: allocatedTemporaries == n + 2
 
     if (operatorSymbol == SYM_PLUS) {
       if (ltype == INTSTAR_T) {
         if (rtype == INT_T){
-          if(rightFlag == 1){
-            load_cfValue(rightValue);
-            rightFlag = 0;
-            rightValue = 0;
+          if(*(cfResult + 1) == 1){
+            load_cfValue(*cfResult);
+            *(cfResult + 1) = 0;
+            *cfResult = 0;
           }
           // pointer arithmetic: factor of 2^2 of integer operand
           emitLeftShiftBy(2);
@@ -2910,9 +2896,9 @@ int gr_simpleExpression() {
         typeWarning(ltype, rtype);
       }
       if(leftFlag == 1){
-        if(rightFlag == 1){
-          rightValue = leftValue + rightValue;
-          leftValue = rightValue;
+        if(*(cfResult + 1) == 1){
+          *cfResult = leftValue + *cfResult;
+          leftValue = *cfResult;
         }else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
@@ -2921,12 +2907,12 @@ int gr_simpleExpression() {
           leftFlag = 0;
         }
       }else{
-        if(rightFlag == 1){
-          load_cfValue(rightValue);
+        if(*(cfResult + 1) == 1){
+          load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
           tfree(1);
-          rightValue = 0;
-          rightFlag = 0;
+          *cfResult = 0;
+          *(cfResult + 1) = 0;
         }else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
           tfree(1);
@@ -2938,9 +2924,9 @@ int gr_simpleExpression() {
         typeWarning(ltype, rtype);
 
       if(leftFlag == 1){
-        if(rightFlag == 1){
-          rightValue = leftValue - rightValue;
-          leftValue = rightValue;
+        if(*(cfResult + 1) == 1){
+          *cfResult = leftValue - *cfResult;
+          leftValue = *cfResult;
         }else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
@@ -2949,12 +2935,12 @@ int gr_simpleExpression() {
           leftValue = 0;
         }
       }else{
-        if(rightFlag == 1){
-          load_cfValue(rightValue);
+        if(*(cfResult + 1) == 1){
+          load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
-          rightFlag = 0;
-          rightValue = 0;
+          *(cfResult + 1) = 0;
+          *cfResult = 0;
         }else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
@@ -2968,7 +2954,7 @@ int gr_simpleExpression() {
   return ltype;
 }
 
-int gr_shiftExpression(){
+int gr_shiftExpression(int* cfResult){
 	int ltype;
 	int operatorSymbol;
 	int rtype;
@@ -2977,24 +2963,24 @@ int gr_shiftExpression(){
   leftValue = 0;
   leftFlag = 0;
 
-	ltype = gr_simpleExpression();
-  leftFlag = rightFlag;
-  leftValue = rightValue;
+  ltype = gr_simpleExpression(cfResult);
+  leftFlag = *(cfResult + 1);
+  leftValue = *cfResult;
 
 
 	while(isLeftOrRightShift()){
 		operatorSymbol = symbol;
 		getSymbol();
-		rtype = gr_simpleExpression();
+		rtype = gr_simpleExpression(cfResult);
 
 		if(ltype == INT_T){
 			if (ltype != rtype)
           typeWarning(ltype, rtype);
 			if (operatorSymbol == SYM_SHIFTL) {
         if(leftFlag == 1){
-          if(rightFlag == 1){
-            rightValue = leftValue << rightValue;
-            leftValue = rightValue;
+          if(*(cfResult + 1) == 1){
+            *cfResult = leftValue << *cfResult;
+            leftValue = *cfResult;
           }else{
             load_cfValue(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(),currentTemporary() , previousTemporary(), FCT_SLLV);
@@ -3003,12 +2989,12 @@ int gr_shiftExpression(){
             leftFlag = 0;
           }
         }else{
-          if(rightFlag == 1){
-            load_cfValue(rightValue);
+          if(*(cfResult + 1) == 1){
+            load_cfValue(*cfResult);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             tfree(1);
-            rightValue = 0;
-            rightFlag = 0;
+            *cfResult = 0;
+            *(cfResult + 1) = 0;
           }else{
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             tfree(1);
@@ -3017,9 +3003,9 @@ int gr_shiftExpression(){
 
 			} else if(operatorSymbol == SYM_SHIFTR) {
         if(leftFlag == 1){
-          if(rightFlag == 1){
-            rightValue = leftValue >> rightValue;
-            leftValue = rightValue;
+          if(*(cfResult + 1) == 1){
+            *cfResult = leftValue >> *cfResult;
+            leftValue = *cfResult;
           }else{
             load_cfValue(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRLV);
@@ -3028,12 +3014,12 @@ int gr_shiftExpression(){
             leftFlag = 0;
           }
         }else{
-          if(rightFlag == 1){
-            load_cfValue(rightValue);
+          if(*(cfResult + 1) == 1){
+            load_cfValue(*cfResult);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
-            rightValue = 0;
-            rightFlag = 0;
+            *cfResult = 0;
+            *(cfResult + 1) = 0;
           }else{
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
@@ -3049,14 +3035,18 @@ int gr_expression() {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int* cfResult;
+  cfResult = malloc(2 * SIZEOFINT);
+  *cfResult = 0;
+  *(cfResult + 1) = 0;
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_shiftExpression();
-  if(rightFlag == 1){
-    load_cfValue(rightValue);
-    rightValue = 0;
-    rightFlag = 0;
+  ltype = gr_shiftExpression(cfResult);
+  if(*(cfResult + 1) == 1){
+    load_cfValue(*cfResult);
+    *(cfResult + 1) = 0;
+    *cfResult = 0;
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3067,11 +3057,11 @@ int gr_expression() {
 
     getSymbol();
 
-    rtype = gr_shiftExpression();
-    if(rightFlag == 1){
-      load_cfValue(rightValue);
-      rightValue = 0;
-      rightFlag = 0;
+    rtype = gr_shiftExpression(cfResult);
+    if(*(cfResult + 1) == 1){
+      load_cfValue(*cfResult);
+      *cfResult = 0;
+      *(cfResult + 1) = 0;
     }
 
     // assert: allocatedTemporaries == n + 2
