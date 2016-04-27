@@ -724,7 +724,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 200000; // 128KB //131072
+int maxBinaryLength = 200000; // 128KB //131072 //0
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2334,8 +2334,7 @@ int load_variable(int* variable) {
 
 void load_cfValue(int cfValue){
   if(cfValue < 0){
-    cfValue = - cfValue;
-    load_integer(cfValue);
+    load_integer(-cfValue);
     emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
   }else{
     load_integer(cfValue);
@@ -2730,9 +2729,10 @@ int gr_term(int* cfResult) {
         if(*(cfResult + 1) == 1){
           *cfResult = leftValue * *cfResult;
           leftValue = *cfResult;
+          //print(itoa(leftValue,string_buffer,10,0,0));
         }else{
           load_cfValue(leftValue);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU); //bug?
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
           leftFlag = 0;
@@ -2866,6 +2866,7 @@ int gr_simpleExpression(int* cfResult) {
     }
     if(leftFlag == 1){
       leftValue = 0 - leftValue;
+      *cfResult = leftValue;
     }else{
       emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
     }
@@ -6878,7 +6879,9 @@ int main(int argc, int* argv) {
 
 	//int x;
 	//x = 1 - 2;
-	//print(itoa(-1 - 5, string_buffer, 10, 0, 0));
+  //print((int*)"solution:");
+	//print(itoa(-1 * 5, string_buffer, 10, 0, 0));
+  //println();
 	//println();
 	//print(itoa(-6 >> 1, string_buffer, 10, 0, 0));
 
