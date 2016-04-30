@@ -140,6 +140,9 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_LBRACKET     = '[';
+int CHAR_RBRACKET     = ']';
+
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -275,8 +278,10 @@ int SYM_NOTEQ        = 24; // !=
 int SYM_MOD          = 25; // %
 int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
-int SYM_SHIFTL		 = 28; // <<
-int SYM_SHIFTR		 = 29; // >>
+int SYM_SHIFTL		   = 28; // <<
+int SYM_SHIFTR		   = 29; // >>
+int SYM_LBRACKET     = 30; // [
+int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -308,7 +313,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-    SYMBOLS = malloc(30 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
     *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -338,8 +343,10 @@ void initScanner () {
     *(SYMBOLS + SYM_MOD)          = (int) "%";
     *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
     *(SYMBOLS + SYM_STRING)       = (int) "string";
-	*(SYMBOLS + SYM_SHIFTL)		  = (int) "<<";
-	*(SYMBOLS + SYM_SHIFTR)		  = (int) ">>";
+	  *(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
+	  *(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
+    *(SYMBOLS + SYM_LBRACKET)  		= (int) "[";
+    *(SYMBOLS + SYM_RBRACKET)  		= (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -680,7 +687,7 @@ void initDecoder() {
     FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
     *(FUNCTIONS + FCT_SLL)     = (int) "sll";
-	*(FUNCTIONS + FCT_SRL)     = (int) "srl";
+  	*(FUNCTIONS + FCT_SRL)     = (int) "srl";
     *(FUNCTIONS + FCT_SLLV)    = (int) "sllv";
     *(FUNCTIONS + FCT_SRLV)    = (int) "srlv";
     *(FUNCTIONS + FCT_JR)      = (int) "jr";
@@ -1910,10 +1917,12 @@ int getSymbol() {
 
     if (character == CHAR_EQUAL) {
       getCharacter();
+
       symbol = SYM_GEQ;
     } else if(character == CHAR_GT) {
-	  getCharacter();
-	  symbol = SYM_SHIFTR;
+      getCharacter();
+
+	    symbol = SYM_SHIFTR;
 	} else
       symbol = SYM_GT;
 
@@ -1931,6 +1940,16 @@ int getSymbol() {
     getCharacter();
 
     symbol = SYM_MOD;
+
+  } else if(character == CHAR_LBRACKET){
+    getCharacter();
+
+    symbol = SYM_LBRACKET;
+
+  } else if(character == CHAR_RBRACKET){
+    getCharacter();
+
+    symbol = SYM_RBRACKET;
 
   } else {
     printLineNumber((int*) "error", lineNumber);
@@ -2334,7 +2353,6 @@ int load_variable(int* variable) {
 
 void load_cfValue(int cfValue){
   if(cfValue < 0){
-    //cfValue = - cfValue;
     load_integer(-cfValue);
     emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
   }else{
@@ -2544,6 +2562,7 @@ int gr_factor(int* cfResult) {
   int hasCast;
   int cast;
   int type;
+  int* entry;
 
   int* variableOrProcedureName;
 
@@ -2643,7 +2662,30 @@ int gr_factor(int* cfResult) {
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
-    } else
+      //array
+    } else if(symbol == SYM_LBRACKET){
+
+      getSymbol();
+
+      gr_selector();
+
+      entry = getVariable(variableOrProcedureName);
+
+      ltype = getType(entry);
+
+      int offset = 0;
+      offset = *(REGISTERS + currentTemporary()) * SIZEOFINT;
+      if(getScope(entry) == REG_GP){
+        offset = getAddress(entry) - offset;
+        emitIFormat(OP_LW, getScope(entry), currentTemporary(), offset);
+      } else if(getScope(entry) == REG_FP){
+        offset = getAddress(entry) + offset;
+        emitIFormat(OP_LW, getScope(entry), currentTemporary(), offset);
+      }
+
+      tfree(1);
+
+    }else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
 
@@ -3410,14 +3452,52 @@ void gr_statement() {
     } else
       syntaxErrorSymbol(SYM_LPARENTHESIS);
   }
-  // identifier "=" expression | call
+  // ( identifier "=" expression  )| call
   else if (symbol == SYM_IDENTIFIER) {
     variableOrProcedureName = identifier;
 
     getSymbol();
 
+    if(symbol == SYM_LBRACKET){
+      getSymbol();
+      gr_selector();
+
+      if (symbol == SYM_ASSIGN) {
+        entry = getVariable(variableOrProcedureName);
+
+        ltype = getType(entry);
+
+        getSymbol();
+
+        rtype = gr_expression();
+
+        if (ltype != rtype)
+          typeWarning(ltype, rtype);
+
+        int offset = 0;
+        offset = *(REGISTERS + previousTemporary()) * SIZEOFINT;
+
+        if(getScope(entry) == REG_GP){
+          offset = getAddress(entry) - offset;
+          emitIFormat(OP_SW, getScope(entry), currentTemporary(), offset);
+        } else if(getScope(entry) == REG_FP){
+          offset = getAddress(entry) + offset;
+          emitIFormat(OP_SW, getScope(entry), currentTemporary(), offset);
+        }
+
+        tfree(2);
+
+        if (symbol == SYM_SEMICOLON)
+          getSymbol();
+        else
+          syntaxErrorSymbol(SYM_SEMICOLON);
+      } else
+        syntaxErrorUnexpected();
+
+    }
+
     // call
-    if (symbol == SYM_LPARENTHESIS) {
+    else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
       gr_call(variableOrProcedureName);

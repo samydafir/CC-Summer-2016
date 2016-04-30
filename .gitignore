@@ -1,0 +1,5 @@
+#Ignored files
+*.m
+*.s
+*.o
+*.exe
