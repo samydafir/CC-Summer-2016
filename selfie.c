@@ -283,7 +283,7 @@ int SYM_SHIFTR		   = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
-int* SYMBOLS; // array of strings representing symbols
+int SYMBOLS[32]; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -313,40 +313,73 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
+    //SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
-    *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
-    *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
-    *(SYMBOLS + SYM_VOID)         = (int) "void";
-    *(SYMBOLS + SYM_INT)          = (int) "int";
-    *(SYMBOLS + SYM_SEMICOLON)    = (int) ";";
-    *(SYMBOLS + SYM_IF)           = (int) "if";
-    *(SYMBOLS + SYM_ELSE)         = (int) "else";
-    *(SYMBOLS + SYM_PLUS)         = (int) "+";
-    *(SYMBOLS + SYM_MINUS)        = (int) "-";
-    *(SYMBOLS + SYM_ASTERISK)     = (int) "*";
-    *(SYMBOLS + SYM_DIV)          = (int) "/";
-    *(SYMBOLS + SYM_EQUALITY)     = (int) "==";
-    *(SYMBOLS + SYM_ASSIGN)       = (int) "=";
-    *(SYMBOLS + SYM_LPARENTHESIS) = (int) "(";
-    *(SYMBOLS + SYM_RPARENTHESIS) = (int) ")";
-    *(SYMBOLS + SYM_LBRACE)       = (int) "{";
-    *(SYMBOLS + SYM_RBRACE)       = (int) "}";
-    *(SYMBOLS + SYM_WHILE)        = (int) "while";
-    *(SYMBOLS + SYM_RETURN)       = (int) "return";
-    *(SYMBOLS + SYM_COMMA)        = (int) ",";
-    *(SYMBOLS + SYM_LT)           = (int) "<";
-    *(SYMBOLS + SYM_LEQ)          = (int) "<=";
-    *(SYMBOLS + SYM_GT)           = (int) ">";
-    *(SYMBOLS + SYM_GEQ)          = (int) ">=";
-    *(SYMBOLS + SYM_NOTEQ)        = (int) "!=";
-    *(SYMBOLS + SYM_MOD)          = (int) "%";
-    *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
-    *(SYMBOLS + SYM_STRING)       = (int) "string";
-	  *(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
-	  *(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
-    *(SYMBOLS + SYM_LBRACKET)  		= (int) "[";
-    *(SYMBOLS + SYM_RBRACKET)  		= (int) "]";
+    SYMBOLS[SYM_IDENTIFIER]   = (int) "identifier";
+    SYMBOLS[SYM_INTEGER]      = (int) "integer";
+    SYMBOLS[SYM_VOID]         = (int) "void";
+    SYMBOLS[SYM_INT]          = (int) "int";
+    SYMBOLS[SYM_SEMICOLON]    = (int) ";";
+    SYMBOLS[SYM_IF]           = (int) "if";
+    SYMBOLS[SYM_ELSE]         = (int) "else";
+    SYMBOLS[SYM_PLUS]         = (int) "+";
+    SYMBOLS[SYM_MINUS]        = (int) "-";
+    SYMBOLS[SYM_ASTERISK]     = (int) "*";
+    SYMBOLS[SYM_DIV]          = (int) "/";
+    SYMBOLS[SYM_EQUALITY]     = (int) "==";
+    SYMBOLS[SYM_ASSIGN]       = (int) "=";
+    SYMBOLS[SYM_LPARENTHESIS] = (int) "(";
+    SYMBOLS[SYM_RPARENTHESIS] = (int) ")";
+    SYMBOLS[SYM_LBRACE]       = (int) "{";
+    SYMBOLS[SYM_RBRACE]       = (int) "}";
+    SYMBOLS[SYM_WHILE]        = (int) "while";
+    SYMBOLS[SYM_RETURN]       = (int) "return";
+    SYMBOLS[SYM_COMMA]        = (int) ",";
+    SYMBOLS[SYM_LT]           = (int) "<";
+    SYMBOLS[SYM_LEQ]          = (int) "<=";
+    SYMBOLS[SYM_GT]           = (int) ">";
+    SYMBOLS[SYM_GEQ]          = (int) ">=";
+    SYMBOLS[SYM_NOTEQ]        = (int) "!=";
+    SYMBOLS[SYM_MOD]          = (int) "%";
+    SYMBOLS[SYM_CHARACTER]    = (int) "character";
+    SYMBOLS[SYM_STRING]       = (int) "string";
+  	SYMBOLS[SYM_SHIFTL]		    = (int) "<<";
+	  SYMBOLS[SYM_SHIFTR]		    = (int) ">>";
+    SYMBOLS[SYM_LBRACKET]  		= (int) "[";
+    SYMBOLS[SYM_RBRACKET]  		= (int) "]";
+
+    //*(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
+    //*(SYMBOLS + SYM_INTEGER)      = (int) "integer";
+    //*(SYMBOLS + SYM_VOID)         = (int) "void";
+    //*(SYMBOLS + SYM_INT)          = (int) "int";
+    //*(SYMBOLS + SYM_SEMICOLON)    = (int) ";";
+    //*(SYMBOLS + SYM_IF)           = (int) "if";
+    //*(SYMBOLS + SYM_ELSE)         = (int) "else";
+    //*(SYMBOLS + SYM_PLUS)         = (int) "+";
+    //*(SYMBOLS + SYM_MINUS)        = (int) "-";
+    //*(SYMBOLS + SYM_ASTERISK)     = (int) "*";
+    //*(SYMBOLS + SYM_DIV)          = (int) "/";
+    //*(SYMBOLS + SYM_EQUALITY)     = (int) "==";
+    //*(SYMBOLS + SYM_ASSIGN)       = (int) "=";
+    //*(SYMBOLS + SYM_LPARENTHESIS) = (int) "(";
+    //*(SYMBOLS + SYM_RPARENTHESIS) = (int) ")";
+    //*(SYMBOLS + SYM_LBRACE)       = (int) "{";
+    //*(SYMBOLS + SYM_RBRACE)       = (int) "}";
+    //*(SYMBOLS + SYM_WHILE)        = (int) "while";
+    //*(SYMBOLS + SYM_RETURN)       = (int) "return";
+    //*(SYMBOLS + SYM_COMMA)        = (int) ",";
+    //*(SYMBOLS + SYM_LT)           = (int) "<";
+    //*(SYMBOLS + SYM_LEQ)          = (int) "<=";
+    //*(SYMBOLS + SYM_GT)           = (int) ">";
+    //*(SYMBOLS + SYM_GEQ)          = (int) ">=";
+    //*(SYMBOLS + SYM_NOTEQ)        = (int) "!=";
+    //*(SYMBOLS + SYM_MOD)          = (int) "%";
+    //*(SYMBOLS + SYM_CHARACTER)    = (int) "character";
+    //*(SYMBOLS + SYM_STRING)       = (int) "string";
+	  //*(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
+	  //*(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
+    //*(SYMBOLS + SYM_LBRACKET)  		= (int) "[";
+    //*(SYMBOLS + SYM_RBRACKET)  		= (int) "]";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -468,20 +501,20 @@ int  help_call_codegen(int* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-int  gr_call(int* procedure);
+int  gr_call(int* cfResult, int* procedure);
 int  gr_factor(int* cfResult);
 int  gr_term(int* cfResult);
 int  gr_simpleExpression(int* cfResult);
 int  gr_shiftExpression(int* cfResult);
-int  gr_expression();
-void gr_while();
-void gr_if();
-void gr_return(int returnType);
-void gr_statement();
-int  gr_type();
-void gr_variable(int offset);
-void gr_initialization(int* name, int offset, int type);
-void gr_procedure(int* procedure, int returnType);
+int  gr_expression(int* cfResult);
+void gr_while(int* cfResult);
+void gr_if(int* cfResult);
+void gr_return(int* cfResult, int returnType);
+void gr_statement(int* cfResult);
+int  gr_type(int* cfResult);
+void gr_variable(int* cfResult, int offset);
+void gr_initialization(int* cfResult, int* name, int offset, int type);
+void gr_procedure(int* cfResult, int* procedure, int returnType);
 void gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -2355,7 +2388,7 @@ void load_cfValue(int cfValue){
   if(cfValue < 0){
     load_integer(-cfValue);
     emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
-  }else{
+  } else{
     load_integer(cfValue);
   }
 }
@@ -2489,7 +2522,7 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int gr_call(int* procedure) {
+int gr_call(int* cfResult, int* procedure) {
   int* entry;
   int numberOfTemporaries;
   int type;
@@ -2509,7 +2542,7 @@ int gr_call(int* procedure) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    gr_expression();
+    gr_expression(cfResult);
 
     // TODO: check if types/number of parameters is correct
 
@@ -2522,7 +2555,7 @@ int gr_call(int* procedure) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(cfResult);
 
       // push more parameters onto stack
       emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
@@ -2558,13 +2591,33 @@ int gr_call(int* procedure) {
   return type;
 }
 
+int gr_selector(int* cfResult){
+  int type;
+
+  type = gr_expression(cfResult);
+
+  print((int*)"selector");
+
+  if(symbol != SYM_RBRACKET){
+    syntaxErrorUnexpected();
+  } else{
+    getSymbol();
+  }
+
+return type;
+
+}
+
 int gr_factor(int* cfResult) {
   int hasCast;
   int cast;
   int type;
+  int offset;
+
   int* entry;
 
   int* variableOrProcedureName;
+  offset = 0;
 
   // assert: n = allocatedTemporaries
   *(cfResult + 1) = 0;
@@ -2590,7 +2643,7 @@ int gr_factor(int* cfResult) {
     if (symbol == SYM_INT) {
       hasCast = 1;
 
-      cast = gr_type();
+      cast = gr_type(cfResult);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2599,7 +2652,7 @@ int gr_factor(int* cfResult) {
 
     // not a cast: "(" expression ")"
     } else {
-      type = gr_expression();
+      type = gr_expression(cfResult);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2626,7 +2679,7 @@ int gr_factor(int* cfResult) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_expression();
+      type = gr_expression(cfResult);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2653,7 +2706,7 @@ int gr_factor(int* cfResult) {
       getSymbol();
 
       // function call: identifier "(" ... ")"
-      type = gr_call(variableOrProcedureName);
+      type = gr_call(cfResult, variableOrProcedureName);
 
       talloc();
 
@@ -2667,13 +2720,13 @@ int gr_factor(int* cfResult) {
 
       getSymbol();
 
-      gr_selector();
+      gr_selector(cfResult);
 
       entry = getVariable(variableOrProcedureName);
 
-      ltype = getType(entry);
+      type = getType(entry);
 
-      int offset = 0;
+
       offset = *(REGISTERS + currentTemporary()) * SIZEOFINT;
       if(getScope(entry) == REG_GP){
         offset = getAddress(entry) - offset;
@@ -2685,7 +2738,7 @@ int gr_factor(int* cfResult) {
 
       tfree(1);
 
-    }else
+    } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
 
@@ -2720,7 +2773,7 @@ int gr_factor(int* cfResult) {
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    type = gr_expression();
+    type = gr_expression(cfResult);
 
     if (symbol == SYM_RPARENTHESIS)
       getSymbol();
@@ -2773,7 +2826,7 @@ int gr_term(int* cfResult) {
           *cfResult = leftValue * *cfResult;
           leftValue = *cfResult;
           //print(itoa(leftValue,string_buffer,10,0,0));
-        }else{
+        } else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU); //bug?
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
@@ -2781,7 +2834,7 @@ int gr_term(int* cfResult) {
           leftFlag = 0;
           leftValue = 0;
         }
-      }else{
+      } else{
         if(*(cfResult + 1) == 1){
           load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
@@ -2789,7 +2842,7 @@ int gr_term(int* cfResult) {
           tfree(1);
           *cfResult = 0;
           *(cfResult + 1) = 0;
-        }else{
+        } else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
@@ -2802,7 +2855,7 @@ int gr_term(int* cfResult) {
         if(*(cfResult + 1) == 1){
           *cfResult = leftValue / *cfResult;
           leftValue = *cfResult;
-        }else{
+        } else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL,currentTemporary() , previousTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
@@ -2810,7 +2863,7 @@ int gr_term(int* cfResult) {
           leftFlag = 0;
           leftValue = 0;
         }
-      }else{
+      } else{
         if(*(cfResult + 1) == 1){
           load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
@@ -2818,7 +2871,7 @@ int gr_term(int* cfResult) {
           tfree(1);
           *(cfResult + 1) = 0;
           *cfResult = 0;
-        }else{
+        } else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
@@ -2831,7 +2884,7 @@ int gr_term(int* cfResult) {
         if(*(cfResult + 1) == 1){
           *cfResult = leftValue % *cfResult;
           leftValue = *cfResult;
-        }else{
+        } else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
@@ -2839,7 +2892,7 @@ int gr_term(int* cfResult) {
           leftFlag = 0;
           leftValue = 0;
         }
-      }else{
+      } else{
         if(*(cfResult + 1) == 1){
           load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
@@ -2847,7 +2900,7 @@ int gr_term(int* cfResult) {
           tfree(1);
           *cfResult = 0;
           *(cfResult + 1) = 0;
-        }else{
+        } else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
           tfree(1);
@@ -2910,7 +2963,7 @@ int gr_simpleExpression(int* cfResult) {
     if(leftFlag == 1){
       leftValue = 0 - leftValue;
       *cfResult = leftValue;
-    }else{
+    } else{
       emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
     }
   }
@@ -2943,21 +2996,21 @@ int gr_simpleExpression(int* cfResult) {
         if(*(cfResult + 1) == 1){
           *cfResult = leftValue + *cfResult;
           leftValue = *cfResult;
-        }else{
+        } else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
           tfree(1);
           leftValue = 0;
           leftFlag = 0;
         }
-      }else{
+      } else{
         if(*(cfResult + 1) == 1){
           load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
           tfree(1);
           *cfResult = 0;
           *(cfResult + 1) = 0;
-        }else{
+        } else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
           tfree(1);
         }
@@ -2971,21 +3024,21 @@ int gr_simpleExpression(int* cfResult) {
         if(*(cfResult + 1) == 1){
           *cfResult = leftValue - *cfResult;
           leftValue = *cfResult;
-        }else{
+        } else{
           load_cfValue(leftValue);
           emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
           leftFlag = 0;
           leftValue = 0;
         }
-      }else{
+      } else{
         if(*(cfResult + 1) == 1){
           load_cfValue(*cfResult);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
           *(cfResult + 1) = 0;
           *cfResult = 0;
-        }else{
+        } else{
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
           tfree(1);
         }
@@ -3025,21 +3078,21 @@ int gr_shiftExpression(int* cfResult){
           if(*(cfResult + 1) == 1){
             *cfResult = leftValue << *cfResult;
             leftValue = *cfResult;
-          }else{
+          } else{
             load_cfValue(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(),currentTemporary() , previousTemporary(), FCT_SLLV);
             tfree(1);
             leftValue = 0;
             leftFlag = 0;
           }
-        }else{
+        } else{
           if(*(cfResult + 1) == 1){
             load_cfValue(*cfResult);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             tfree(1);
             *cfResult = 0;
             *(cfResult + 1) = 0;
-          }else{
+          } else{
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             tfree(1);
           }
@@ -3050,21 +3103,21 @@ int gr_shiftExpression(int* cfResult){
           if(*(cfResult + 1) == 1){
             *cfResult = leftValue >> *cfResult;
             leftValue = *cfResult;
-          }else{
+          } else{
             load_cfValue(leftValue);
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
             leftValue = 0;
             leftFlag = 0;
           }
-        }else{
+        } else{
           if(*(cfResult + 1) == 1){
             load_cfValue(*cfResult);
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
             *cfResult = 0;
             *(cfResult + 1) = 0;
-          }else{
+          } else{
             emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
             tfree(1);
           }
@@ -3075,14 +3128,11 @@ int gr_shiftExpression(int* cfResult){
 	return ltype;
 }
 
-int gr_expression() {
+int gr_expression(int* cfResult) {
   int ltype;
   int operatorSymbol;
   int rtype;
-  int* cfResult;
-  cfResult = malloc(2 * SIZEOFINT);
-  *cfResult = 0;
-  *(cfResult + 1) = 0;
+
 
   // assert: n = allocatedTemporaries
 
@@ -3091,6 +3141,7 @@ int gr_expression() {
     load_cfValue(*cfResult);
     *(cfResult + 1) = 0;
     *cfResult = 0;
+    *(cfResult + 2) = 1;
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3106,6 +3157,8 @@ int gr_expression() {
       load_cfValue(*cfResult);
       *cfResult = 0;
       *(cfResult + 1) = 0;
+    } else{
+      *(cfResult + 2) = 0;
     }
 
     // assert: allocatedTemporaries == n + 2
@@ -3176,7 +3229,7 @@ int gr_expression() {
   return ltype;
 }
 
-void gr_while() {
+void gr_while(int* cfResult) {
   int brBackToWhile;
   int brForwardToEnd;
 
@@ -3193,7 +3246,7 @@ void gr_while() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(cfResult);
 
       // do not know where to branch, fixup later
       brForwardToEnd = binaryLength;
@@ -3210,7 +3263,7 @@ void gr_while() {
           getSymbol();
 
           while (isNotRbraceOrEOF())
-            gr_statement();
+            gr_statement(cfResult);
 
           if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3222,7 +3275,7 @@ void gr_while() {
         }
         // only one statement without {}
         else
-          gr_statement();
+          gr_statement(cfResult);
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -3241,7 +3294,7 @@ void gr_while() {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_if() {
+void gr_if(int* cfResult) {
   int brForwardToElseOrEnd;
   int brForwardToEnd;
 
@@ -3254,7 +3307,7 @@ void gr_if() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(cfResult);
 
       // if the "if" case is not true, we jump to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
@@ -3271,7 +3324,7 @@ void gr_if() {
           getSymbol();
 
           while (isNotRbraceOrEOF())
-            gr_statement();
+            gr_statement(cfResult);
 
           if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3283,7 +3336,7 @@ void gr_if() {
         }
         // only one statement without {}
         else
-          gr_statement();
+          gr_statement(cfResult);
 
         //optional: else
         if (symbol == SYM_ELSE) {
@@ -3301,7 +3354,7 @@ void gr_if() {
             getSymbol();
 
             while (isNotRbraceOrEOF())
-              gr_statement();
+              gr_statement(cfResult);
 
             if (symbol == SYM_RBRACE)
               getSymbol();
@@ -3313,7 +3366,7 @@ void gr_if() {
 
           // only one statement without {}
           } else
-            gr_statement();
+            gr_statement(cfResult);
 
           // if the "if" case was true, we jump here
           fixup_relative(brForwardToEnd);
@@ -3330,7 +3383,7 @@ void gr_if() {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_return(int returnType) {
+void gr_return(int* cfResult, int returnType) {
   int type;
 
   // assert: allocatedTemporaries == 0
@@ -3342,7 +3395,7 @@ void gr_return(int returnType) {
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
-    type = gr_expression();
+    type = gr_expression(cfResult);
 
     if (returnType == VOID_T)
       typeWarning(type, returnType);
@@ -3366,11 +3419,15 @@ void gr_return(int returnType) {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_statement() {
+void gr_statement(int* cfResult) {
   int ltype;
   int rtype;
+  int offset;
   int* variableOrProcedureName;
   int* entry;
+  offset = 0;
+
+  print((int*)"statement");
 
   // assert: allocatedTemporaries == 0;
 
@@ -3400,7 +3457,7 @@ void gr_statement() {
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression();
+        rtype = gr_expression(cfResult);
 
         if (rtype != INT_T)
           typeWarning(INT_T, rtype);
@@ -3420,7 +3477,7 @@ void gr_statement() {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      ltype = gr_expression();
+      ltype = gr_expression(cfResult);
 
       if (ltype != INTSTAR_T)
         typeWarning(INTSTAR_T, ltype);
@@ -3432,7 +3489,7 @@ void gr_statement() {
         if (symbol == SYM_ASSIGN) {
           getSymbol();
 
-          rtype = gr_expression();
+          rtype = gr_expression(cfResult);
 
           if (rtype != INT_T)
             typeWarning(INT_T, rtype);
@@ -3460,7 +3517,7 @@ void gr_statement() {
 
     if(symbol == SYM_LBRACKET){
       getSymbol();
-      gr_selector();
+      gr_selector(cfResult);
 
       if (symbol == SYM_ASSIGN) {
         entry = getVariable(variableOrProcedureName);
@@ -3469,12 +3526,12 @@ void gr_statement() {
 
         getSymbol();
 
-        rtype = gr_expression();
+        rtype = gr_expression(cfResult);
 
         if (ltype != rtype)
           typeWarning(ltype, rtype);
 
-        int offset = 0;
+
         offset = *(REGISTERS + previousTemporary()) * SIZEOFINT;
 
         if(getScope(entry) == REG_GP){
@@ -3500,7 +3557,7 @@ void gr_statement() {
     else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_call(variableOrProcedureName);
+      gr_call(cfResult, variableOrProcedureName);
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
@@ -3518,7 +3575,7 @@ void gr_statement() {
 
       getSymbol();
 
-      rtype = gr_expression();
+      rtype = gr_expression(cfResult);
 
       if (ltype != rtype)
         typeWarning(ltype, rtype);
@@ -3536,17 +3593,17 @@ void gr_statement() {
   }
   // while statement?
   else if (symbol == SYM_WHILE) {
-    gr_while();
+    gr_while(cfResult);
   }
   // if statement?
   else if (symbol == SYM_IF) {
-    gr_if();
+    gr_if(cfResult);
   }
   // return statement?
   else if (symbol == SYM_RETURN) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
-    gr_return(getType(entry));
+    gr_return(cfResult, getType(entry));
 
     if (symbol == SYM_SEMICOLON)
       getSymbol();
@@ -3555,7 +3612,7 @@ void gr_statement() {
   }
 }
 
-int gr_type() {
+int gr_type(int* cfResult) {
   int type;
 
   type = INT_T;
@@ -3574,15 +3631,32 @@ int gr_type() {
   return type;
 }
 
-void gr_variable(int offset) {
+void gr_variable(int* cfResult, int offset) {
   int type;
 
-  type = gr_type();
+  type = gr_type(cfResult);
+
+  print((int*)"variable");
 
   if (symbol == SYM_IDENTIFIER) {
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
 
     getSymbol();
+
+    if (symbol == SYM_LBRACKET) {
+      getSymbol();
+      gr_selector(cfResult);
+      if (*(cfResult + 2) == 1) {
+        offset = offset - *(REGISTERS + currentTemporary()) * WORDSIZE;
+        createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
+        *(cfResult + 2) = 0;
+      } else{
+        syntaxErrorMessage((int*) "No dynamic array declaration!");
+
+        exit(-1);
+      }
+
+    }
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
@@ -3590,7 +3664,7 @@ void gr_variable(int offset) {
   }
 }
 
-void gr_initialization(int* name, int offset, int type) {
+void gr_initialization(int* cfResult, int* name, int offset, int type) {
   int actualLineNumber;
   int hasCast;
   int cast;
@@ -3611,7 +3685,7 @@ void gr_initialization(int* name, int offset, int type) {
 
       getSymbol();
 
-      cast = gr_type();
+      cast = gr_type(cfResult);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3666,7 +3740,7 @@ void gr_initialization(int* name, int offset, int type) {
   createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset);
 }
 
-void gr_procedure(int* procedure, int returnType) {
+void gr_procedure(int* cfResult, int* procedure, int returnType) {
   int numberOfParameters;
   int parameters;
   int localVariables;
@@ -3682,14 +3756,14 @@ void gr_procedure(int* procedure, int returnType) {
     getSymbol();
 
     if (symbol != SYM_RPARENTHESIS) {
-      gr_variable(0);
+      gr_variable(cfResult, 0);
 
       numberOfParameters = 1;
 
       while (symbol == SYM_COMMA) {
         getSymbol();
 
-        gr_variable(0);
+        gr_variable(cfResult, 0);
 
         numberOfParameters = numberOfParameters + 1;
       }
@@ -3759,7 +3833,7 @@ void gr_procedure(int* procedure, int returnType) {
     while (symbol == SYM_INT) {
       localVariables = localVariables + 1;
 
-      gr_variable(-localVariables * WORDSIZE);
+      gr_variable(cfResult, -localVariables * WORDSIZE);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3773,7 +3847,7 @@ void gr_procedure(int* procedure, int returnType) {
     returnBranches = 0;
 
     while (isNotRbraceOrEOF())
-      gr_statement();
+      gr_statement(cfResult);
 
     if (symbol == SYM_RBRACE)
       getSymbol();
@@ -3800,6 +3874,14 @@ void gr_procedure(int* procedure, int returnType) {
 void gr_cstar() {
   int type;
   int* variableOrProcedureName;
+  int* cfResult;
+  cfResult = malloc(3 * SIZEOFINT);
+  *cfResult = 0;
+  *(cfResult + 1) = 0;
+  *(cfResult + 2) = 0;
+
+  print((int*)"cstar");
+  println();
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -3822,11 +3904,11 @@ void gr_cstar() {
 
         getSymbol();
 
-        gr_procedure(variableOrProcedureName, type);
+        gr_procedure(cfResult, variableOrProcedureName, type);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
     } else {
-      type = gr_type();
+      type = gr_type(cfResult);
 
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
@@ -3834,9 +3916,19 @@ void gr_cstar() {
         getSymbol();
 
         // type identifier "(" procedure declaration or definition
-        if (symbol == SYM_LPARENTHESIS)
-          gr_procedure(variableOrProcedureName, type);
-        else {
+        if (symbol == SYM_LPARENTHESIS){
+          gr_procedure(cfResult, variableOrProcedureName, type);
+        } else if (symbol == SYM_LBRACKET) {
+          getSymbol();
+          gr_selector(cfResult);
+          allocatedMemory = allocatedMemory + *(REGISTERS + currentTemporary()) * WORDSIZE;
+          createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory);
+          //getSymbol();
+          if(symbol != SYM_SEMICOLON){
+            syntaxErrorUnexpected();
+          }
+          getSymbol();
+        } else {
           allocatedMemory = allocatedMemory + WORDSIZE;
 
           // type identifier ";" global variable declaration
@@ -3847,7 +3939,7 @@ void gr_cstar() {
 
           // type identifier "=" global variable definition
           } else
-            gr_initialization(variableOrProcedureName, -allocatedMemory, type);
+            gr_initialization(cfResult, variableOrProcedureName, -allocatedMemory, type);
         }
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
