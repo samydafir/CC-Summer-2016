@@ -19,6 +19,8 @@ letter           = "a" | ... | "z" | "A" | ... | "Z" .
 
 identifier       = letter { letter | digit | "_" } .
 
+selector         = "[" expression "]" .
+
 type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
@@ -27,11 +29,12 @@ call             = identifier "(" [ expression { "," expression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
 
-factor           = [ cast ] 
+factor           = ( identifier selector ) |
+                    ( [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
                       literal |
-                      """ { ascii_character } """ ) .
+                      """ { ascii_character } """ ) ) .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
 
@@ -41,29 +44,28 @@ shiftExpression = simpleExpression { (  "<<" | ">>" ) simpleExression } .
 
 expression       = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ] .
 
-while            = "while" "(" expression ")" 
+while            = "while" "(" expression ")"
                              ( statement |
                                "{" { statement } "}" ) .
 
-if               = "if" "(" expression ")" 
-                             ( statement | 
-                               "{" { statement } "}" ) 
+if               = "if" "(" expression ")"
+                             ( statement |
+                               "{" { statement } "}" )
                          [ "else"
                              ( statement |
                                "{" { statement } "}" ) ] .
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
-                      expression ";" |
-                    call ";" | 
-                    while | 
-                    if | 
+statement        = ( [ "*" ] identifier | "*" "(" expression ")" | ( identifier selector ) ) "=" expression ";" |
+                    call ";" |
+                    while |
+                    if |
                     return ";" .
 
-variable         = type identifier .
+variable         = type identifier [ selector ] .
 
-procedure        = "(" [ variable { "," variable } ] ")" 
+procedure        = "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
