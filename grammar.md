@@ -68,6 +68,7 @@ variable         = type identifier [ selector ] .
 procedure        = "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
+cstar            = variable ";" |
+                   { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```
