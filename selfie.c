@@ -410,7 +410,7 @@ int reportUndefinedProcedures();
 // |  0 | next    | pointer to next entry
 // |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, PROCEDURE, STRING
+// |  3 | class   | VARIABLE, PROCEDURE, STRING, ARRAY
 // |  4 | type    | INT_T, INTSTAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
@@ -443,6 +443,7 @@ void setSize(int* entry, int size)          { *(entry + 8) = size; }
 int VARIABLE  = 1;
 int PROCEDURE = 2;
 int STRING    = 3;
+int ARRAY     = 4;
 
 // types
 int INT_T     = 1;
@@ -766,7 +767,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 200000; // 128KB //131072 //0
+int maxBinaryLength = 2000000; // 128KB //131072 //0 //0
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2016,6 +2017,10 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
   setAddress(newEntry, address);
   setSize(newEntry, size);
 
+print((int*)"class:");
+  print(itoa(getClass(newEntry),string_buffer,10,0,0));
+  println();
+
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
     setScope(newEntry, REG_GP);
@@ -2050,6 +2055,12 @@ int* getSymbolTableEntry(int* string, int class) {
   int* entry;
 
   if (class == VARIABLE) {
+    // local variables override global variables
+    entry = searchSymbolTable(local_symbol_table, string, class);
+
+    if (entry != (int*) 0)
+      return entry;
+  } else if (class == ARRAY) {
     // local variables override global variables
     entry = searchSymbolTable(local_symbol_table, string, class);
 
@@ -2364,12 +2375,15 @@ int* getVariable(int* variable) {
   entry = getSymbolTableEntry(variable, VARIABLE);
 
   if (entry == (int*) 0) {
-    printLineNumber((int*) "error", lineNumber);
-    print(variable);
-    print((int*) " undeclared");
-    println();
+    entry = getSymbolTableEntry(variable, ARRAY);
+    if(entry == (int*) 0){
+      printLineNumber((int*) "error", lineNumber);
+      print(variable);
+      print((int*) " undeclared");
+      println();
 
-    exit(-1);
+      exit(-1);
+    }
   }
 
   return entry;
@@ -2402,10 +2416,10 @@ void load_integer(int value) {
   talloc();
 
   if (value >= 0) {
-    if (value < twoToThePowerOf(15))
+    if (value < twoToThePowerOf(15)){
       // ADDIU can only load numbers < 2^15 without sign extension
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), value);
-    else if (value < twoToThePowerOf(28)) {
+    }else if (value < twoToThePowerOf(28)) {
       // load 14 msbs of a 28-bit number first
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 14));
 
@@ -2445,7 +2459,7 @@ void load_string(int* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, WORDSIZE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory, WORDSIZE);
+  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory, 1);
 
   talloc();
 
@@ -2457,7 +2471,7 @@ int help_call_codegen(int* entry, int* procedure) {
 
   if (entry == (int*) 0) {
     // CASE 1: function call, no definition, no declaration.
-    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, INT_T, 0, binaryLength, 1);
 
     emitJFormat(OP_JAL, 0);
 
@@ -2599,8 +2613,6 @@ int gr_selector(int* cfResult) {
 
   type = gr_expression(cfResult);
 
-  print((int*)"selector");
-
   if (symbol != SYM_RBRACKET) {
     syntaxErrorUnexpected();
   } else{
@@ -2623,6 +2635,7 @@ int gr_factor(int* cfResult) {
   offset = 0;
 
   // assert: n = allocatedTemporaries
+  *(cfResult + 2) = 0;
   *(cfResult + 1) = 0;
   *cfResult = 0;
   hasCast = 0;
@@ -2727,15 +2740,16 @@ int gr_factor(int* cfResult) {
 
       entry = getVariable(variableOrProcedureName);
       type = getType(entry);
-      offset = *(REGISTERS + currentTemporary()) * SIZEOFINT; //offset vom arrayanfang weg
+
+      offset = *cfResult * WORDSIZE; //offset vom arrayanfang weg
 
       if (getScope(entry) == REG_GP) {
-        offset = getAddress(entry) + offset; //offset von $gp
-        emitIFormat(OP_LW, getScope(entry), currentTemporary(), -offset);
+        offset = getAddress(entry) - offset; //offset von $gp
+        emitIFormat(OP_LW, getScope(entry), currentTemporary(), offset);
 
       } else if (getScope(entry) == REG_FP) {//useless
-        offset = getAddress(entry) + offset; //offset von $fp
-        emitIFormat(OP_LW, getScope(entry), currentTemporary(), -offset);
+        offset = getAddress(entry) - offset; //offset von $fp
+        emitIFormat(OP_LW, getScope(entry), currentTemporary(), offset);
       }
 
     } else
@@ -2828,7 +2842,7 @@ int gr_term(int* cfResult) {
           //print(itoa(leftValue,string_buffer,10,0,0));
         } else {
           load_cfValue(leftValue);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU); //bug?
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
           tfree(1);
           leftFlag = 0;
@@ -3137,10 +3151,11 @@ int gr_expression(int* cfResult) {
   // assert: n = allocatedTemporaries
 
   ltype = gr_shiftExpression(cfResult);
+
   if (*(cfResult + 1) == 1) {
     load_cfValue(*cfResult);
     *(cfResult + 1) = 0;
-    *cfResult = 0;
+    //*cfResult = 0;
     *(cfResult + 2) = 1;
   }
 
@@ -3155,7 +3170,7 @@ int gr_expression(int* cfResult) {
     rtype = gr_shiftExpression(cfResult);
     if (*(cfResult + 1) == 1) {
       load_cfValue(*cfResult);
-      *cfResult = 0;
+      //*cfResult = 0;
       *(cfResult + 1) = 0;
     } else{
       *(cfResult + 2) = 0;
@@ -3524,6 +3539,17 @@ void gr_statement(int* cfResult) {
 
         ltype = getType(entry);
 
+        if (*(cfResult + 2) == 1) {
+          offset = *cfResult * WORDSIZE;
+        } else {
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU); 
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          offset = *(REGISTERS + currentTemporary()) * WORDSIZE;
+          print((int*)*(REGISTERS + currentTemporary()));
+
+          println();
+        }
+
         getSymbol();
 
         rtype = gr_expression(cfResult);
@@ -3531,15 +3557,12 @@ void gr_statement(int* cfResult) {
         if (ltype != rtype)
           typeWarning(ltype, rtype);
 
-
-        offset = *(REGISTERS + previousTemporary()) * SIZEOFINT;
-
         if (getScope(entry) == REG_GP) {
-          offset = getAddress(entry) + offset;
-          emitIFormat(OP_SW, getScope(entry), currentTemporary(), -offset);
+          offset = getAddress(entry) - offset;
+          emitIFormat(OP_SW, getScope(entry), currentTemporary(), offset);
         } else if (getScope(entry) == REG_FP) {
-          offset = getAddress(entry) + offset;
-          emitIFormat(OP_SW, getScope(entry), currentTemporary(), -offset);
+          offset = getAddress(entry) - offset;
+          emitIFormat(OP_SW, getScope(entry), currentTemporary(), offset);
         }
 
         tfree(2);
@@ -3634,7 +3657,9 @@ void gr_variable(int* cfResult, int offset) {
 
   type = gr_type(cfResult);
 
-  print((int*)"variable");
+  print((int*)"symbol before ident: ");
+  print(itoa(symbol, string_buffer, 10, 0,0));
+  println();
 
   if (symbol == SYM_IDENTIFIER) {
 
@@ -3643,21 +3668,22 @@ void gr_variable(int* cfResult, int offset) {
     if (symbol == SYM_LBRACKET) {
       getSymbol();
       gr_selector(cfResult);
+
       if (*(cfResult + 2) == 1) {
-        offset = offset - *(REGISTERS + currentTemporary()) * WORDSIZE;
-        createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, currentTemporary() * WORDSIZE);
+        createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, ARRAY, type, 0, offset, *cfResult);
+
         *(cfResult + 2) = 0;
       } else {
         syntaxErrorMessage((int*) "No dynamic array declaration!");
         exit(-1);
       }
     } else {
-      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, WORDSIZE);
+      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, 1);
     }
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
-    createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, WORDSIZE);
+    createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 1);
   }
 }
 
@@ -3734,7 +3760,7 @@ void gr_initialization(int* cfResult, int* name, int offset, int type) {
   } else if (type != INT_T)
     typeWarning(type, INT_T);
 
-  createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset, WORDSIZE);
+  createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset, 1);
 }
 
 void gr_procedure(int* cfResult, int* procedure, int returnType) {
@@ -3742,6 +3768,8 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
   int parameters;
   int localVariables;
   int functionStart;
+  int localVarSize;
+  int* lastEntry;
   int* entry;
 
   currentProcedureName = procedure;
@@ -3790,7 +3818,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
     if (entry == (int*) 0)
-      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, 0, WORDSIZE);
+      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, 0, 1);
 
     getSymbol();
 
@@ -3801,7 +3829,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
     if (entry == (int*) 0)
-      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, binaryLength, WORDSIZE);
+      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, binaryLength, 1);
     else {
       if (getAddress(entry) != 0) {
         if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL)
@@ -3826,11 +3854,23 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     getSymbol();
 
     localVariables = 0;
+    localVarSize = 1;
 
     while (symbol == SYM_INT) {
       localVariables = localVariables + 1;
 
-      gr_variable(cfResult, -localVariables * WORDSIZE);//lokale var
+      gr_variable(cfResult, -localVarSize * WORDSIZE);//lokale var
+      lastEntry = local_symbol_table;
+
+      if (getClass(lastEntry) == ARRAY) {
+        localVarSize = localVarSize + getSize(lastEntry);
+        print(itoa(getClass(lastEntry),string_buffer,10,0,0));
+        println();
+      } else {
+        print(itoa(getClass(lastEntry),string_buffer,10,0,0));
+        println();
+        localVarSize = localVarSize + 1;
+      }
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3839,7 +3879,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     }
 
 
-    help_procedure_prologue(localVariables);
+    help_procedure_prologue(localVarSize);
 
     // create a fixup chain for return statements
     returnBranches = 0;
@@ -3923,10 +3963,13 @@ void gr_cstar() {
         } else if (symbol == SYM_LBRACKET) {
           getSymbol();
           gr_selector(cfResult);
-          allocatedMemory = allocatedMemory + *(REGISTERS + currentTemporary()) * WORDSIZE;
-          createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, currentTemporary() * WORDSIZE);
+          if (*(cfResult + 2) == 1) {
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, ARRAY, type, 0, -allocatedMemory - 4, *cfResult);
+            allocatedMemory = allocatedMemory + *cfResult * WORDSIZE;
+          } else {
+            syntaxErrorUnexpected(); //dynamic error missing
+          }
 
-           // groesse des arrays *(REGISTERS + currentTemporary()) * WORDSIZE
 
           if (symbol != SYM_SEMICOLON) {
             syntaxErrorUnexpected();
@@ -3937,7 +3980,7 @@ void gr_cstar() {
 
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, WORDSIZE);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 1);
 
             getSymbol();
 
@@ -3985,7 +4028,7 @@ void emitMainEntry() {
     i = i + 1;
   }
 
-  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   // jump and link to main, will return here only if there is no exit call
   emitJFormat(OP_JAL, 0);
@@ -4552,7 +4595,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emitExit() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength, 1);
 
   // load argument for exit
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
@@ -4587,7 +4630,7 @@ void implementExit() {
 }
 
 void emitRead() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4704,7 +4747,7 @@ void implementRead() {
 }
 
 void emitWrite() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4820,7 +4863,7 @@ void implementWrite() {
 }
 
 void emitOpen() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4926,7 +4969,7 @@ void implementOpen() {
 }
 
 void emitMalloc() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4976,7 +5019,7 @@ void implementMalloc() {
 // -----------------------------------------------------------------
 
 void emitID() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_ID);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5002,7 +5045,7 @@ int selfie_ID() {
 }
 
 void emitCreate() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5054,7 +5097,7 @@ int selfie_create() {
 }
 
 void emitSwitch() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5135,7 +5178,7 @@ int selfie_switch(int toID) {
 }
 
 void emitStatus() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_STATUS);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5178,7 +5221,7 @@ int selfie_status() {
 }
 
 void emitDelete() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5230,7 +5273,7 @@ void selfie_delete(int ID) {
 }
 
 void emitMap() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength, WORDSIZE);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength, 1);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
