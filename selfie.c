@@ -2598,7 +2598,6 @@ int gr_factor(int* cfResult) {
   int* entry;
 
   int* variableOrProcedureName;
-  print((int*)"bla");
   // assert: n = allocatedTemporaries
   *(cfResult + 2) = 0;
   *(cfResult + 1) = 0;
