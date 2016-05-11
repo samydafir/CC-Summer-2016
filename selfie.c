@@ -344,9 +344,9 @@ void initScanner () {
     *(SYMBOLS + SYM_MOD)          = (int) "%";
     *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
     *(SYMBOLS + SYM_STRING)       = (int) "string";
-	  *(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
-	  *(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
-    *(SYMBOLS + SYM_LBRACKET)  		= (int) "[";
+	*(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
+	*(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
+    *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
     *(SYMBOLS + SYM_RBRACKET)  		= (int) "]";
 
     character = CHAR_EOF;
@@ -2359,8 +2359,12 @@ int load_variable(int* variable) {
   entry = getVariable(variable);
 
   talloc();
-
-  emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  if(getClass(entry) == ARRAY){
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), getAddress(entry));
+    emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), FCT_ADDU);
+  }else{
+    emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  }
 
   return getType(entry);
 }
@@ -2594,7 +2598,7 @@ int gr_factor(int* cfResult) {
   int* entry;
 
   int* variableOrProcedureName;
-
+  print((int*)"bla");
   // assert: n = allocatedTemporaries
   *(cfResult + 2) = 0;
   *(cfResult + 1) = 0;
