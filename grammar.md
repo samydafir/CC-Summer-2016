@@ -19,8 +19,6 @@ letter           = "a" | ... | "z" | "A" | ... | "Z" .
 
 identifier       = letter { letter | digit | "_" } .
 
-selector         = "[" expression "]" .
-
 type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
@@ -29,7 +27,7 @@ call             = identifier "(" [ expression { "," expression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
 
-factor           = ( identifier selector ) |
+factor           =  ( identifier "[" expression "]" ) |
                     ( [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
@@ -57,18 +55,21 @@ if               = "if" "(" expression ")"
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier | "*" "(" expression ")" | ( identifier selector ) ) "=" expression ";" |
+statement        = ( [ "*" ] identifier | "*" "(" expression ")" | identifier "[" expression "]") "="
+                      expression ";" |
                     call ";" |
                     while |
                     if |
                     return ";" .
 
-variable         = type identifier [ selector ] .
+variable         = type identifier [ "[" expression "]" ] .
 
-procedure        = "(" [ variable { "," variable } ] ")"
+struct           = "struct" identifier ( "{" { variable } "}"  | "*" identifier ";" ) .
+
+procedure        =  struct | "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            = variable ";" |
-                   { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
-                   ( "void" | type ) identifier procedure } .
+cstar            =  struct | type identifier "[" expression "]" ";" |
+                    { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
+                    ( "void" | type ) identifier procedure } .
 ```

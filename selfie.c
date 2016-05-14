@@ -282,6 +282,7 @@ int SYM_SHIFTL		   = 28; // <<
 int SYM_SHIFTR		   = 29; // >>
 int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
+int SYM_STRUCT       = 32; // struct
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -313,7 +314,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-    SYMBOLS = malloc(32 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(33 * SIZEOFINTSTAR);
 
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
@@ -344,10 +345,12 @@ void initScanner () {
     *(SYMBOLS + SYM_MOD)          = (int) "%";
     *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
     *(SYMBOLS + SYM_STRING)       = (int) "string";
-	*(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
-	*(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
+  	*(SYMBOLS + SYM_SHIFTL)	  	  = (int) "<<";
+  	*(SYMBOLS + SYM_SHIFTR)  		  = (int) ">>";
     *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
     *(SYMBOLS + SYM_RBRACKET)  		= (int) "]";
+    *(SYMBOLS + SYM_STRUCT)  	  	= (int) "struct";
+
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -366,7 +369,7 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address, int size);
+void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address, int size, int* belongsTo);
 int* searchSymbolTable(int* entry, int* string, int class);
 int* getSymbolTableEntry(int* string, int class);
 
@@ -378,11 +381,13 @@ int reportUndefinedProcedures();
 // |  0 | next    | pointer to next entry
 // |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, PROCEDURE, STRING, ARRAY
+// |  3 | class   | VARIABLE, PROCEDURE, STRING, ARRAY, STRUCT_DEF, STRUCT_F, STRUCT
 // |  4 | type    | INT_T, INTSTAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
 // |  7 | scope   | REG_GP, REG_FP
+// |  8 | size    | size of entry
+// |  9 | belongs | entry belongs to STRUCT_DEF
 // +----+---------+
 
 int* getNextEntry(int* entry)  { return (int*) *entry; }
@@ -394,24 +399,30 @@ int  getValue(int* entry)      { return        *(entry + 5); }
 int  getAddress(int* entry)    { return        *(entry + 6); }
 int  getScope(int* entry)      { return        *(entry + 7); }
 int  getSize(int* entry)       { return        *(entry + 8); }
+int* getBelongsTo(int* entry)  { return (int*) *(entry + 9); }
 
-void setNextEntry(int* entry, int* next)    { *entry       = (int) next; }
-void setString(int* entry, int* identifier) { *(entry + 1) = (int) identifier; }
-void setLineNumber(int* entry, int line)    { *(entry + 2) = line; }
-void setClass(int* entry, int class)        { *(entry + 3) = class; }
-void setType(int* entry, int type)          { *(entry + 4) = type; }
-void setValue(int* entry, int value)        { *(entry + 5) = value; }
-void setAddress(int* entry, int address)    { *(entry + 6) = address; }
-void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
-void setSize(int* entry, int size)          { *(entry + 8) = size; }
+
+void setNextEntry(int* entry, int* next)      { *entry       = (int) next; }
+void setString(int* entry, int* identifier)   { *(entry + 1) = (int) identifier; }
+void setLineNumber(int* entry, int line)      { *(entry + 2) = line; }
+void setClass(int* entry, int class)          { *(entry + 3) = class; }
+void setType(int* entry, int type)            { *(entry + 4) = type; }
+void setValue(int* entry, int value)          { *(entry + 5) = value; }
+void setAddress(int* entry, int address)      { *(entry + 6) = address; }
+void setScope(int* entry, int scope)          { *(entry + 7) = scope; }
+void setSize(int* entry, int size)            { *(entry + 8) = size; }
+void setBelongsTo(int* entry, int* belongsTo) { *(entry + 9) = (int) belongsTo; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
-int VARIABLE  = 1;
-int PROCEDURE = 2;
-int STRING    = 3;
-int ARRAY     = 4;
+int VARIABLE   = 1;
+int PROCEDURE  = 2;
+int STRING     = 3;
+int ARRAY      = 4;
+int STRUCT_DEF = 5;
+int STRUCT_F   = 6;
+int STRUCT     = 7;
 
 // types
 int INT_T     = 1;
@@ -449,6 +460,7 @@ int isStarOrDivOrModulo();
 int isPlusOrMinus();
 int isLeftOrRightShift();
 int isComparison();
+int isIntOrStruct();
 
 int lookForFactor();
 int lookForStatement();
@@ -484,6 +496,9 @@ void gr_return(int* cfResult, int returnType);
 void gr_statement(int* cfResult);
 int  gr_type(int* cfResult);
 void gr_variable(int* cfResult, int offset);
+void gr_struct(int whichTable, int offset);
+void gr_struct_def(int whichTable, int* structType);
+void gr_struct_dec(int whichTable, int offset, int* structType);
 void gr_initialization(int* cfResult, int* name, int offset, int type);
 void gr_procedure(int* cfResult, int* procedure, int returnType);
 void gr_cstar();
@@ -1713,6 +1728,8 @@ int identifierOrKeyword() {
     return SYM_RETURN;
   if (identifierStringMatch(SYM_VOID))
     return SYM_VOID;
+  if (identifierStringMatch(SYM_STRUCT))
+    return SYM_STRUCT;
   else
     return SYM_IDENTIFIER;
 }
@@ -1972,10 +1989,10 @@ int getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address, int size) {
+void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address, int size, int* belongsTo) {
   int* newEntry;
 
-  newEntry = malloc(2 * SIZEOFINTSTAR + 7 * SIZEOFINT);
+  newEntry = malloc(3 * SIZEOFINTSTAR + 7 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -1984,6 +2001,7 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
   setValue(newEntry, value);
   setAddress(newEntry, address);
   setSize(newEntry, size);
+  setBelongsTo(newEntry, belongsTo);
 
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
@@ -2161,6 +2179,15 @@ int isComparison() {
   else if (symbol == SYM_LEQ)
     return 1;
   else if (symbol == SYM_GEQ)
+    return 1;
+  else
+    return 0;
+}
+
+int isIntOrStruct() {
+  if (symbol == SYM_INT)
+    return 1;
+  else if (symbol == SYM_STRUCT)
     return 1;
   else
     return 0;
@@ -2427,7 +2454,7 @@ void load_string(int* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, WORDSIZE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory, 1);
+  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory, 1, (int*) 0);
 
   talloc();
 
@@ -2439,7 +2466,7 @@ int help_call_codegen(int* entry, int* procedure) {
 
   if (entry == (int*) 0) {
     // CASE 1: function call, no definition, no declaration.
-    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, INT_T, 0, binaryLength, 1);
+    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
     emitJFormat(OP_JAL, 0);
 
@@ -2598,6 +2625,7 @@ int gr_factor(int* cfResult) {
   int* entry;
 
   int* variableOrProcedureName;
+  print((int*)"a");
   // assert: n = allocatedTemporaries
   *(cfResult + 2) = 0;
   *(cfResult + 1) = 0;
@@ -3610,19 +3638,162 @@ void gr_variable(int* cfResult, int offset) {
       gr_selector(cfResult);
 
       if (*(cfResult + 2) == 1) {
-        createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, ARRAY, INTSTAR_T, 0, offset, *cfResult);
+        createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, ARRAY, INTSTAR_T, 0, offset, *cfResult, (int*) 0);
         *(cfResult + 2) = 0;
       } else {
         syntaxErrorMessage((int*) "No dynamic array declaration!");
         exit(-1);
       }
     } else {
-      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, 1);
+      createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, 1, (int*) 0);
     }
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
-    createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 1);
+    createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 1, (int*) 0);
+  }
+}
+
+void gr_struct(int whichTable, int offset) {
+  int* structType;
+  int* isLocalOrGlobal;
+
+  if (whichTable == GLOBAL_TABLE)
+    isLocalOrGlobal = global_symbol_table;
+  else if (whichTable == LOCAL_TABLE)
+    isLocalOrGlobal = local_symbol_table;
+
+  if (symbol == SYM_STRUCT) {
+    getSymbol();
+    if (symbol == SYM_IDENTIFIER) {
+      structType = identifier;
+      getSymbol();
+      if (symbol == SYM_ASTERISK) {
+        if (searchSymbolTable(isLocalOrGlobal, structType, STRUCT) == (int*) 0 )
+          gr_struct_dec(whichTable, offset, structType);
+        else {
+          printLineNumber((int*) "error", lineNumber);
+          print(structType);
+          print((int*) " already declared");
+          println();
+
+          exit(-1);
+        }
+      } else if (symbol == SYM_LBRACE) {
+        if (searchSymbolTable(isLocalOrGlobal, structType, STRUCT_DEF) == (int*) 0 )
+          gr_struct_def(whichTable, structType);
+        else {
+          printLineNumber((int*) "error", lineNumber);
+          print(structType);
+          print((int*) " already declared");
+          println();
+
+          exit(-1);
+        }
+
+        if (symbol !=  SYM_RBRACE)
+          syntaxErrorSymbol(SYM_RBRACE);
+        else
+          getSymbol();
+
+      } else
+        syntaxErrorUnexpected();
+
+    } else
+      syntaxErrorSymbol(SYM_IDENTIFIER);
+  }
+}
+
+void gr_struct_def(int whichTable, int* structType) {
+  int sizeCounter ;
+  int* structEntry;
+  int* name;
+
+  if (symbol == SYM_LBRACE) {
+    getSymbol();
+    createSymbolTableEntry(whichTable, structType, lineNumber, STRUCT_DEF, 0, 0, 0, 1, (int*) 0);
+    if (whichTable == GLOBAL_TABLE)
+      structEntry = global_symbol_table;
+    else if (whichTable == LOCAL_TABLE)
+      structEntry = local_symbol_table;
+
+    sizeCounter = 0;
+    while (isIntOrStruct()) {
+      if (symbol == SYM_INT) {
+        getSymbol();
+        if (symbol == SYM_ASTERISK) {
+          getSymbol();
+          if (symbol == SYM_IDENTIFIER) {
+              name = identifier;
+              getSymbol();
+            if (symbol == SYM_SEMICOLON) {
+              createSymbolTableEntry(whichTable, name, lineNumber, STRUCT_F, INTSTAR_T, 0, -sizeCounter * SIZEOFINTSTAR, 1, (int*) 0);
+            } else
+              syntaxErrorSymbol(SYM_SEMICOLON);
+          }
+        } else if (symbol == SYM_IDENTIFIER) {
+          name = identifier;
+          getSymbol();
+          if (symbol == SYM_SEMICOLON) {
+            createSymbolTableEntry(whichTable, name, lineNumber, STRUCT_F, INT_T, 0, -sizeCounter * SIZEOFINT, 1, (int*) 0);
+          } else
+            syntaxErrorSymbol(SYM_SEMICOLON);
+        }
+      } else if (symbol == SYM_STRUCT) {
+        getSymbol();
+        if (symbol == SYM_IDENTIFIER) {
+          name = identifier;
+          getSymbol();
+          if (symbol == SYM_ASTERISK) {
+            getSymbol();
+            if (symbol == SYM_IDENTIFIER) {
+              getSymbol();
+              if (symbol == SYM_SEMICOLON) {
+                createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT_F, 0, 0, -sizeCounter * WORDSIZE, 1, name);
+              } else
+                syntaxErrorSymbol(SYM_SEMICOLON);
+            }
+          }
+        }
+      }
+      getSymbol();
+      sizeCounter = sizeCounter +1;
+    }
+    setSize(structEntry, sizeCounter);
+  }
+}
+
+void gr_struct_dec(int whichTable, int offset, int* structType){
+  int* isLocalOrGlobal;
+  int* entry;
+  int* pointerToStruct;
+
+  if (whichTable == GLOBAL_TABLE)
+    isLocalOrGlobal = global_symbol_table;
+  else if (whichTable == LOCAL_TABLE)
+    isLocalOrGlobal = local_symbol_table;
+
+  if (symbol == SYM_ASTERISK) {
+    getSymbol();
+    if (symbol == SYM_IDENTIFIER) {
+      getSymbol();
+      if (symbol == SYM_SEMICOLON) {
+        entry = searchSymbolTable(isLocalOrGlobal, structType, STRUCT_DEF);
+        createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT, 0, 0, offset, getSize(entry), structType);
+        pointerToStruct = malloc(getSize(entry) * WORDSIZE);
+
+        if (whichTable == GLOBAL_TABLE)
+          entry = global_symbol_table;
+        else if (whichTable == LOCAL_TABLE)
+          entry = local_symbol_table;
+
+        load_integer((int)pointerToStruct);//bug?
+        emitIFormat(OP_SW, getScope(entry), currentTemporary(), offset);
+        tfree(1);
+        getSymbol();
+      } else
+        syntaxErrorSymbol(SYM_SEMICOLON);
+    }
   }
 }
 
@@ -3699,7 +3870,7 @@ void gr_initialization(int* cfResult, int* name, int offset, int type) {
   } else if (type != INT_T)
     typeWarning(type, INT_T);
 
-  createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset, 1);
+  createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset, 1, (int*) 0);
 }
 
 void gr_procedure(int* cfResult, int* procedure, int returnType) {
@@ -3757,7 +3928,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
     if (entry == (int*) 0)
-      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, 0, 1);
+      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, 0, 1, (int*) 0);
 
     getSymbol();
 
@@ -3768,7 +3939,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
     if (entry == (int*) 0)
-      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, binaryLength, 1);
+      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, binaryLength, 1, (int*) 0);
     else {
       if (getAddress(entry) != 0) {
         if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL)
@@ -3862,6 +4033,7 @@ void gr_cstar() {
       else
         getSymbol();
     }
+    
 
     // void identifier procedure
     if (symbol == SYM_VOID) {
@@ -3893,7 +4065,7 @@ void gr_cstar() {
           getSymbol();
           gr_selector(cfResult);
           if (*(cfResult + 2) == 1) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, ARRAY, INTSTAR_T, 0, -allocatedMemory - 4, *cfResult);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, ARRAY, INTSTAR_T, 0, -allocatedMemory - 4, *cfResult, (int*) 0);
             allocatedMemory = allocatedMemory + *cfResult * WORDSIZE;
           } else {
             syntaxErrorUnexpected(); //dynamic error missing
@@ -3909,7 +4081,7 @@ void gr_cstar() {
 
           // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 1);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory, 1, (int*) 0);
 
             getSymbol();
 
@@ -3957,7 +4129,7 @@ void emitMainEntry() {
     i = i + 1;
   }
 
-  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   // jump and link to main, will return here only if there is no exit call
   emitJFormat(OP_JAL, 0);
@@ -4524,7 +4696,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emitExit() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength, 1, (int*) 0);
 
   // load argument for exit
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
@@ -4559,7 +4731,7 @@ void implementExit() {
 }
 
 void emitRead() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4676,7 +4848,7 @@ void implementRead() {
 }
 
 void emitWrite() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4792,7 +4964,7 @@ void implementWrite() {
 }
 
 void emitOpen() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4898,7 +5070,7 @@ void implementOpen() {
 }
 
 void emitMalloc() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4948,7 +5120,7 @@ void implementMalloc() {
 // -----------------------------------------------------------------
 
 void emitID() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_ID);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -4974,7 +5146,7 @@ int selfie_ID() {
 }
 
 void emitCreate() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5026,7 +5198,7 @@ int selfie_create() {
 }
 
 void emitSwitch() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5107,7 +5279,7 @@ int selfie_switch(int toID) {
 }
 
 void emitStatus() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_STATUS);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5150,7 +5322,7 @@ int selfie_status() {
 }
 
 void emitDelete() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5202,7 +5374,7 @@ void selfie_delete(int ID) {
 }
 
 void emitMap() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength, 1);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength, 1, (int*) 0);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
