@@ -3753,11 +3753,10 @@ void gr_struct_dec(int* whichTable, int* structType, int offset){
       syntaxErrorMessage((int*)"Struct Type not found");
       exit(-1);
     }
-    pointerToStruct = malloc(getSize(entry) * WORDSIZE);
     createSymbolTableEntry(table, identifier, lineNumber, VARIABLE, 0, 0, -offset, getSize(entry), structType);
-    load_integer((int)pointerToStruct);
-    emitIFormat(OP_SW, scope, currentTemporary(), -offset);
-    tfree(1);
+    //load_integer((int)pointerToStruct);
+    //emitIFormat(OP_SW, scope, currentTemporary(), -offset);
+    //tfree(1);
     getSymbol();
     if(symbol != SYM_SEMICOLON)
       syntaxErrorSymbol(SYM_SEMICOLON);
@@ -4025,15 +4024,15 @@ void gr_cstar() {
       print((int*)"struct");
       println();
       getSymbol();
-      if(symbol == SYM_IDENTIFIER){
+      if(symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
         getSymbol();
-        if(symbol == SYM_LBRACE){
+        if(symbol == SYM_LBRACE) {
           createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, STRUCT_DEF, 0, 0, 0, 0, (int*) 0);
           lastEntry = global_symbol_table;
           getSymbol();
           structSize = gr_struct_def(0,1, variableOrProcedureName);
-          if(symbol == SYM_RBRACE){
+          if(symbol == SYM_RBRACE) {
             getSymbol();
             if(symbol != SYM_SEMICOLON)
               syntaxErrorSymbol(SYM_SEMICOLON);
@@ -4043,7 +4042,7 @@ void gr_cstar() {
             syntaxErrorSymbol(SYM_RBRACE);
 
           setSize(lastEntry, structSize);
-        } else if (symbol == SYM_ASTERISK){
+        } else if (symbol == SYM_ASTERISK) {
           getSymbol();
           gr_struct_dec(global_symbol_table, variableOrProcedureName, 0);
         }
