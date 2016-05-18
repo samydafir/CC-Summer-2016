@@ -3849,9 +3849,12 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
 
   // ( variable , variable ) ;
   if (symbol == SYM_LPARENTHESIS) {
+
     getSymbol();
 
     if (symbol != SYM_RPARENTHESIS) {
+
+      //standard variables
       gr_variable(cfResult, 0);
 
       numberOfParameters = 1;
