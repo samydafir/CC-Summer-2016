@@ -27,7 +27,8 @@ call             = identifier "(" [ expression { "," expression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
 
-factor           =  ( identifier "[" expression "]" ) |
+factor           =   struct_acc |
+                    ( identifier "[" expression "]" ) |
                     ( [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
@@ -55,7 +56,8 @@ if               = "if" "(" expression ")"
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier | "*" "(" expression ")" | identifier "[" expression "]") "="
+statement        =  ( struct_acc |
+                    [ "*" ] identifier | "*" "(" expression ")" | identifier "[" expression "]") "="
                       expression ";" |
                     call ";" |
                     while |
@@ -64,12 +66,16 @@ statement        = ( [ "*" ] identifier | "*" "(" expression ")" | identifier "[
 
 variable         = type identifier [ "[" expression "]" ] .
 
-struct           = "struct" identifier ( "{" { variable } "}"  | "*" identifier ";" ) .
+struct_def       = "struct" identifier  "{" { variable | struct_dec } "}" ";" .
 
-procedure        =  struct | "(" [ variable { "," variable } ] ")"
+struct_dec       = "struct" identifier "*" identifier ";" .
+
+struct_acc       = identifier "->" identifier .
+
+procedure        =  struct_dec | struct_def | "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            =  struct | type identifier "[" expression "]" ";" |
+cstar            =  struct_dec | struct_def | type identifier "[" expression "]" ";" |
                     { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
                     ( "void" | type ) identifier procedure } .
 ```
