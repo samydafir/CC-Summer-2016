@@ -478,6 +478,8 @@ int isPlusOrMinus();
 int isIntOrStruct();
 int isLeftOrRightShift();
 int isComparison();
+int or(int arg1, int arg2);
+int and(int arg1, int arg2);
 
 int lookForFactor();
 int lookForStatement();
@@ -2213,6 +2215,23 @@ int isComparison() {
     return 0;
 }
 
+int or(int arg1, int arg2){
+  if(arg1 == 1)
+    return 1;
+  if(arg2 == 1)
+    return 1;
+  return 0;
+}
+
+int and(int arg1, int arg2){
+  if(arg1 == 1){
+    if(arg2 == 1){
+      return 1;
+    }
+  }
+  return 0;
+}
+
 int lookForFactor() {
   if (symbol == SYM_LPARENTHESIS)
     return 0;
@@ -2653,7 +2672,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-
+  print((int*)"|");
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -3539,22 +3558,18 @@ void gr_statement(int* cfResult) {
     variableOrProcedureName = identifier;
 
     getSymbol();
-    //print((int*)"arrow not found!");
-    print(itoa(symbol, string_buffer,10,0,0));
-    println();
-    if (symbol == SYM_ARROW) {
-      print((int*)"calling acc");
-      ltype = gr_struct_acc(variableOrProcedureName);
-      print((int*)"finished acc");
-      getSymbol();
-      if (symbol == SYM_ASSIGN) {
-        rtype = gr_expression(cfResult);
 
+    if (symbol == SYM_ARROW) {
+      ltype = gr_struct_acc(variableOrProcedureName);
+      getSymbol();
+
+      if (symbol == SYM_ASSIGN) {
+        getSymbol();
+        rtype = gr_expression(cfResult);
         if (ltype != rtype)
           syntaxErrorMessage((int*)"type mismatch!");
 
         emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
-        getSymbol();
         tfree(2);
 
         if(symbol != SYM_SEMICOLON)
@@ -3562,7 +3577,6 @@ void gr_statement(int* cfResult) {
         else
           getSymbol();
       }
-
 
     } else if (symbol == SYM_LBRACKET) {
       getSymbol();
@@ -3719,8 +3733,6 @@ int gr_struct_def(int globalLocal) {
     if (symbol == SYM_INT) {
       getSymbol();
       if (symbol == SYM_IDENTIFIER) {
-        print(identifier);
-        println();
         createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT_F, INT_T, 0, varCounter * SIZEOFINT, 1, (int*)0);
         varCounter = varCounter + 1;
         getSymbol();
@@ -3800,8 +3812,6 @@ int gr_struct_acc(int* name) {
   int* entry_temp;
   int* scope;
 
-  print((int*)"acc!");
-
   getSymbol();
   entry_var = searchSymbolTable(local_symbol_table, name, VARIABLE);
   if (entry_var == (int*) 0)
@@ -3822,22 +3832,19 @@ int gr_struct_acc(int* name) {
 
   if (symbol == SYM_IDENTIFIER){
     entry_field = searchSymbolTable(scope, identifier, STRUCT_F);
-    while(entry_field != (int*) 0){
+    entry_temp = entry_field;
+    while(and(entry_temp != (int*) 0, entry_temp != entry_def)){
       i = 0;
       while(i <= getAddress(entry_field) / WORDSIZE){//bug?
-        entry_temp = getNextEntry(entry_field);
+        entry_temp = getNextEntry(entry_temp);
         i = i + 1;
       }
-      if(entry_temp == entry_def){
-
+      if(entry_temp != entry_def){
+        entry_temp = getNextEntry(entry_temp);
+        entry_field = searchSymbolTable(entry_temp, identifier, STRUCT_F);
+        entry_temp = entry_field;
       }
-
-
-
-
-
     }
-
     if(stringCompare(getString(entry_field), identifier) == 0)
       syntaxErrorMessage((int*)"field not found");
 
@@ -7329,8 +7336,9 @@ int selfie(int argc, int* argv) {
 int main(int argc, int* argv) {
   struct a {
     int b;
+    int* c;
+    int o;
   };
-
   struct a* x;
 
   initLibrary();
@@ -7349,14 +7357,17 @@ int main(int argc, int* argv) {
 
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
-
+  //headOfSymbolTable = malloc(40);
   x = malloc(4);
-  x->b = 5;
+  x -> b = 5;
+  x -> o = x -> b;
+  print(itoa(x -> o,string_buffer,10,0,0));
 
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
       print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
       println();
   }
+
   return 0;
 }
