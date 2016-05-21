@@ -480,6 +480,7 @@ int isLeftOrRightShift();
 int isComparison();
 int or(int arg1, int arg2);
 int and(int arg1, int arg2);
+void printInt(int arg);
 
 int lookForFactor();
 int lookForStatement();
@@ -2232,6 +2233,11 @@ int and(int arg1, int arg2){
   return 0;
 }
 
+void printInt(int arg){
+  print(itoa(arg, string_buffer,10,0,0));
+  println();
+}
+
 int lookForFactor() {
   if (symbol == SYM_LPARENTHESIS)
     return 0;
@@ -3057,7 +3063,7 @@ int gr_simpleExpression(int* cfResult) {
           *cfResult = 0;
           *(cfResult + 1) = 0;
         } else{
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);//bla
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
           tfree(1);
         }
       }
@@ -3556,7 +3562,6 @@ void gr_statement(int* cfResult) {
   // ( identifier "=" expression  )| call
   else if (symbol == SYM_IDENTIFIER) {
     variableOrProcedureName = identifier;
-
     getSymbol();
 
     if (symbol == SYM_ARROW) {
@@ -3835,7 +3840,7 @@ int gr_struct_acc(int* name) {
     entry_temp = entry_field;
     while(and(entry_temp != (int*) 0, entry_temp != entry_def)){
       i = 0;
-      while(i <= getAddress(entry_field) / WORDSIZE){//bug?
+      while(i <= getAddress(entry_field) / WORDSIZE){
         entry_temp = getNextEntry(entry_temp);
         i = i + 1;
       }
@@ -3849,7 +3854,9 @@ int gr_struct_acc(int* name) {
       syntaxErrorMessage((int*)"field not found");
 
     talloc();
-    emitIFormat(OP_LW, getScope(entry_var), currentTemporary(), -getAddress(entry_field));
+    printInt(getAddress(entry_field));
+    printInt(getAddress(entry_var));
+    emitIFormat(OP_LW, getScope(entry_var), currentTemporary(), getAddress(entry_var));
     emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), getAddress(entry_field));
 
   }
@@ -4140,7 +4147,6 @@ void gr_cstar() {
   int* cfResult;
   int structSize;
   int* lastEntry;
-
   cfResult = malloc(3 * SIZEOFINT);
   *cfResult = 0;
   *(cfResult + 1) = 0;
@@ -7340,6 +7346,7 @@ int main(int argc, int* argv) {
     int o;
   };
   struct a* x;
+  int p;
 
   initLibrary();
 
@@ -7357,11 +7364,20 @@ int main(int argc, int* argv) {
 
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
-  //headOfSymbolTable = malloc(40);
-  x = malloc(4);
+
+  x = malloc(12);
+  print(itoa((int)x,string_buffer,10,0,0));
   x -> b = 5;
   x -> o = x -> b;
-  print(itoa(x -> o,string_buffer,10,0,0));
+  println();
+  headOfSymbolTable = malloc(40);
+  print(itoa((int)headOfSymbolTable,string_buffer,10,0,0));
+  headOfSymbolTable -> size = 5;
+  p = headOfSymbolTable -> size;
+  print((int*)"___________");
+  printInt(p);
+  print((int*)"___________");
+
 
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
