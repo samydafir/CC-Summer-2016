@@ -4235,12 +4235,8 @@ void gr_cstar() {
         } else if (symbol == SYM_ASTERISK) {
           getSymbol();
           gr_struct_dec(cfResult, global_symbol_table, variableOrProcedureName, 0);
-          if(getClass(global_symbol_table) != PROCEDURE){
-            if (symbol != SYM_SEMICOLON)
-              syntaxErrorSymbol(SYM_SEMICOLON);
-            else
-              getSymbol();
-          }
+          if (symbol == SYM_SEMICOLON)
+            getSymbol();
         }
       }
     } else {
@@ -7379,13 +7375,7 @@ struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntr
 }
 
 int main(int argc, int* argv) {
-  struct a {
-    int b;
-    int* c;
-    int o;
-  };
-  struct a* x;
-  struct symbolTableEntry* blabla;
+
   initLibrary();
 
   initScanner();
@@ -7401,13 +7391,6 @@ int main(int argc, int* argv) {
   argv = argv + 1;
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
-
-  x = (struct a*)malloc(12);
-  headOfSymbolTable = (struct symbolTableEntry*)malloc(40);
-  blabla = (struct symbolTableEntry*)malloc(40);
-  headOfSymbolTable -> nextEntry = blabla;
-
-  test(headOfSymbolTable, headOfSymbolTable);
 
 
   if (selfie(argc, (int*) argv) != 0) {
