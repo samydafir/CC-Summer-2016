@@ -2680,7 +2680,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-  print((int*)"|");
+
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
