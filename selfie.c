@@ -413,6 +413,7 @@ void setScope(int* entry, int scope)          { *(entry + 7) = scope; }
 void setSize(int* entry, int size)            { *(entry + 8) = size; }
 void setBelongsTo(int* entry, int* belongsTo) { *(entry + 9) = (int) belongsTo; }
 
+
 // ------------------------ GLOBAL STRUCTS -----------------------
 
 struct symbolTableEntry {
@@ -516,7 +517,7 @@ void gr_return(int* cfResult, int returnType);
 void gr_statement(int* cfResult);
 int  gr_type(int* cfResult);
 int  gr_struct_def(int globalLocal);
-void gr_struct_dec(int* whichTable, int* structType, int offset);
+void gr_struct_dec(int* cfResult, int* whichTable, int* structType, int offset);
 int gr_struct_acc(int* name);
 void gr_variable(int* cfResult, int offset);
 void gr_initialization(int* cfResult, int* name, int offset, int type);
@@ -2415,6 +2416,7 @@ int* getVariable(int* variable) {
   if (entry == (int*) 0) {
     entry = getSymbolTableEntry(variable, ARRAY);
     if(entry == (int*) 0){
+
       printLineNumber((int*) "error", lineNumber);
       print(variable);
       print((int*) " undeclared");
@@ -2693,7 +2695,7 @@ int gr_factor(int* cfResult) {
     getSymbol();
 
     // cast: "(" "int" [ "*" ] ")"
-    if (symbol == SYM_INT) {
+    if (isIntOrStruct()) {
       hasCast = 1;
 
       cast = gr_type(cfResult);
@@ -3450,7 +3452,6 @@ void gr_return(int* cfResult, int returnType) {
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
     type = gr_expression(cfResult);
-
     if (returnType == VOID_T)
       typeWarning(type, returnType);
     else if (type != returnType)
@@ -3675,6 +3676,8 @@ void gr_statement(int* cfResult) {
 
 int gr_type(int* cfResult) {
   int type;
+  int* structType;
+  int* typeEntry;
 
   type = INT_T;
 
@@ -3685,6 +3688,25 @@ int gr_type(int* cfResult) {
       type = INTSTAR_T;
 
       getSymbol();
+    }
+  }else if (symbol == SYM_STRUCT){
+    getSymbol();
+    if(symbol == SYM_IDENTIFIER){
+      structType = identifier;
+      getSymbol();
+      if(symbol == SYM_ASTERISK){
+        getSymbol();
+        typeEntry = searchSymbolTable(local_symbol_table, structType, STRUCT_DEF);
+        if(typeEntry == (int*)0){
+          typeEntry = searchSymbolTable(global_symbol_table, structType, STRUCT_DEF);
+          if(typeEntry == (int*)0)
+            syntaxErrorMessage((int*)"Type not found");
+        }
+        type = (int)typeEntry;
+      } else if (symbol == SYM_LBRACE){
+        getSymbol();
+        type = 0;
+      }
     }
   } else
     syntaxErrorSymbol(SYM_INT);
@@ -3726,6 +3748,7 @@ int gr_struct_def(int globalLocal) {
   int varCounter;
   int* structType;
   int whichTable;
+  int* entry;
 
   if (globalLocal == 1) {
     whichTable = GLOBAL_TABLE;
@@ -3762,12 +3785,16 @@ int gr_struct_def(int globalLocal) {
           if (symbol == SYM_ASTERISK) {
             getSymbol();
             if (symbol == SYM_IDENTIFIER) {
-              if (searchSymbolTable(local_symbol_table, structType, STRUCT_DEF) != (int*) 0) {
-                createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT_F, INTSTAR_T, 0, varCounter * SIZEOFINTSTAR, 1, structType);
+              entry = searchSymbolTable(local_symbol_table, structType, STRUCT_DEF);
+              if (entry != (int*) 0) {
+                createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT_F, (int)entry, 0, varCounter * SIZEOFINTSTAR, 1, structType);
                 varCounter = varCounter + 1;
-              } else if (searchSymbolTable(global_symbol_table, structType, STRUCT_DEF) != (int*) 0) {
-                createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT_F, INTSTAR_T, 0, varCounter * SIZEOFINTSTAR, 1, structType);
-                varCounter = varCounter + 1;
+              } else {
+                entry = searchSymbolTable(global_symbol_table, structType, STRUCT_DEF);
+                if(entry != (int*) 0){
+                  createSymbolTableEntry(whichTable, identifier, lineNumber, STRUCT_F, (int)entry, 0, varCounter * SIZEOFINTSTAR, 1, structType);
+                  varCounter = varCounter + 1;
+                }
               }
               getSymbol();
               if (symbol != SYM_SEMICOLON)
@@ -3782,9 +3809,10 @@ int gr_struct_def(int globalLocal) {
   return varCounter;
 }
 
-void gr_struct_dec(int* whichTable, int* structType, int offset) {
+void gr_struct_dec(int* cfResult,int* whichTable, int* structType, int offset) {
   int* entry;
   int table;
+  int* variableOrProcedureName;
 
   if (whichTable == global_symbol_table) {
     allocatedMemory = allocatedMemory + WORDSIZE;
@@ -3796,16 +3824,22 @@ void gr_struct_dec(int* whichTable, int* structType, int offset) {
 
 
   if (symbol == SYM_IDENTIFIER) {
+    variableOrProcedureName = identifier;
     entry = searchSymbolTable(local_symbol_table, structType, STRUCT_DEF);
     if (entry == (int*)0) {
       entry = searchSymbolTable(global_symbol_table, structType, STRUCT_DEF);
     }
+
     if (entry == (int*)0) {
       syntaxErrorMessage((int*)"Struct Type not found");
       exit(-1);
     }
-    createSymbolTableEntry(table, identifier, lineNumber, VARIABLE, INTSTAR_T, 0, offset, getSize(entry), structType);
     getSymbol();
+    if(symbol == SYM_LPARENTHESIS){
+      gr_procedure(cfResult, variableOrProcedureName, (int)entry);
+    } else {
+      createSymbolTableEntry(table, variableOrProcedureName, lineNumber, VARIABLE, (int)entry, 0, offset, getSize(entry), structType);
+    }
   }
 }
 
@@ -3854,8 +3888,6 @@ int gr_struct_acc(int* name) {
       syntaxErrorMessage((int*)"field not found");
 
     talloc();
-    printInt(getAddress(entry_field));
-    printInt(getAddress(entry_var));
     emitIFormat(OP_LW, getScope(entry_var), currentTemporary(), getAddress(entry_var));
     emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), getAddress(entry_field));
 
@@ -3967,7 +3999,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
           getSymbol();
           if (symbol == SYM_ASTERISK) {
             getSymbol();
-            gr_struct_dec(local_symbol_table, structType, 0);
+            gr_struct_dec(cfResult, local_symbol_table, structType, 0);
           }
         }
       } else {
@@ -3986,7 +4018,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
             getSymbol();
             if (symbol == SYM_ASTERISK) {
               getSymbol();
-              gr_struct_dec(local_symbol_table, structType, 0);
+              gr_struct_dec(cfResult, local_symbol_table, structType, 0);
             }
           }
         } else {
@@ -4067,7 +4099,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
           getSymbol();
           //local struct definition
           if (symbol == SYM_LBRACE) {
-            createSymbolTableEntry(LOCAL_TABLE, structType, lineNumber, STRUCT_DEF, 0, 0, 0, 0, (int*) 0);
+            createSymbolTableEntry(LOCAL_TABLE, structType, lineNumber, STRUCT_DEF, 0, 0, 0, 0, (int*)0);
             lastEntry = local_symbol_table;
             getSymbol();
             structSize = gr_struct_def(0);
@@ -4083,7 +4115,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
           //local struct decleration
           } else if(symbol == SYM_ASTERISK) {
             getSymbol();
-            gr_struct_dec(local_symbol_table, structType, -localVarSize * WORDSIZE);
+            gr_struct_dec(cfResult, local_symbol_table, structType, -localVarSize * WORDSIZE);
             if(symbol != SYM_SEMICOLON)
               syntaxErrorSymbol(SYM_SEMICOLON);
             else
@@ -4202,11 +4234,13 @@ void gr_cstar() {
         //global struct decleration
         } else if (symbol == SYM_ASTERISK) {
           getSymbol();
-          gr_struct_dec(global_symbol_table, variableOrProcedureName, 0);
-          if (symbol != SYM_SEMICOLON)
-            syntaxErrorSymbol(SYM_SEMICOLON);
-          else
-            getSymbol();
+          gr_struct_dec(cfResult, global_symbol_table, variableOrProcedureName, 0);
+          if(getClass(global_symbol_table) != PROCEDURE){
+            if (symbol != SYM_SEMICOLON)
+              syntaxErrorSymbol(SYM_SEMICOLON);
+            else
+              getSymbol();
+          }
         }
       }
     } else {
@@ -7339,6 +7373,11 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
+//test function for struct-function-parameters
+struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntry* b) {
+  return (struct symbolTableEntry*) 999999;
+}
+
 int main(int argc, int* argv) {
   struct a {
     int b;
@@ -7346,8 +7385,7 @@ int main(int argc, int* argv) {
     int o;
   };
   struct a* x;
-  int p;
-
+  struct symbolTableEntry* blabla;
   initLibrary();
 
   initScanner();
@@ -7361,22 +7399,15 @@ int main(int argc, int* argv) {
 
   argc = argc - 1;
   argv = argv + 1;
-
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
 
-  x = malloc(12);
-  print(itoa((int)x,string_buffer,10,0,0));
-  x -> b = 5;
-  x -> o = x -> b;
-  println();
-  headOfSymbolTable = malloc(40);
-  print(itoa((int)headOfSymbolTable,string_buffer,10,0,0));
-  headOfSymbolTable -> size = 5;
-  p = headOfSymbolTable -> size;
-  print((int*)"___________");
-  printInt(p);
-  print((int*)"___________");
+  x = (struct a*)malloc(12);
+  headOfSymbolTable = (struct symbolTableEntry*)malloc(40);
+  blabla = (struct symbolTableEntry*)malloc(40);
+  headOfSymbolTable -> nextEntry = blabla;
+
+  test(headOfSymbolTable, headOfSymbolTable);
 
 
   if (selfie(argc, (int*) argv) != 0) {
