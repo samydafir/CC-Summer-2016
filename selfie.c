@@ -480,6 +480,7 @@ int isNotRbraceOrEOF();
 int isExpression();
 int isLiteral();
 int isStarOrDivOrModulo();
+int isAndOrOr();
 int isPlusOrMinus();
 int isIntOrStruct();
 int isLeftOrRightShift();
@@ -516,6 +517,7 @@ int  gr_term(int* cfResult);
 int  gr_simpleExpression(int* cfResult);
 int  gr_shiftExpression(int* cfResult);
 int  gr_expression(int* cfResult);
+int  gr_boolExpression(int* cfResult);
 void gr_while(int* cfResult);
 void gr_if(int* cfResult);
 void gr_return(int* cfResult, int returnType);
@@ -523,7 +525,7 @@ void gr_statement(int* cfResult);
 int  gr_type(int* cfResult);
 int  gr_struct_def(int globalLocal);
 void gr_struct_dec(int* cfResult, int* whichTable, int* structType, int offset);
-int gr_struct_acc(int* name);
+int  gr_struct_acc(int* name);
 void gr_variable(int* cfResult, int offset);
 void gr_initialization(int* cfResult, int* name, int offset, int type);
 void gr_procedure(int* cfResult, int* procedure, int returnType);
@@ -2189,6 +2191,15 @@ int isStarOrDivOrModulo() {
     return 0;
 }
 
+int isAndOrOr(){
+  if (symbol == SYM_AND)
+    return 1;
+  else if (symbol == SYM_OR)
+    return 1;
+  else
+    return 0;
+}
+
 int isPlusOrMinus() {
   if (symbol == SYM_MINUS)
     return 1;
@@ -3211,7 +3222,6 @@ int gr_expression(int* cfResult) {
   if (*(cfResult + 1) == 1) {
     load_cfValue(*cfResult);
     *(cfResult + 1) = 0;
-    //*cfResult = 0;
     *(cfResult + 2) = 1;
   }
 
@@ -3221,13 +3231,13 @@ int gr_expression(int* cfResult) {
   if (isComparison()) {
     *(cfResult + 2) = 0;
     operatorSymbol = symbol;
+    *(cfResult + 3) = symbol;
 
     getSymbol();
 
     rtype = gr_shiftExpression(cfResult);
     if (*(cfResult + 1) == 1) {
       load_cfValue(*cfResult);
-      //*cfResult = 0;
       *(cfResult + 1) = 0;
     } else{
       *(cfResult + 2) = 0;
@@ -3300,6 +3310,19 @@ int gr_expression(int* cfResult) {
 
   return ltype;
 }
+
+int gr_boolExpression(int* cfResult){
+  int ltype;
+  int rtype;
+
+  ltype = gr_expression(cfResult);
+
+  while(isAndOrOr()){
+
+  }
+
+}
+
 
 void gr_while(int* cfResult) {
   int brBackToWhile;
@@ -3443,7 +3466,7 @@ void gr_if(int* cfResult) {
           // if the "if" case was true, we jump here
           fixup_relative(brForwardToEnd);
         } else
-          // if the "if" case was not true, we jump here
+          // if the "if" case was not true amd there is no "else", we jump here
           fixup_relative(brForwardToElseOrEnd);
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
@@ -4195,10 +4218,13 @@ void gr_cstar() {
   int* cfResult;
   int structSize;
   int* lastEntry;
-  cfResult = malloc(3 * SIZEOFINT);
+  cfResult = malloc(6 * SIZEOFINT);
   *cfResult = 0;
   *(cfResult + 1) = 0;
   *(cfResult + 2) = 0;
+  *(cfResult + 3) = 0;
+  *(cfResult + 4) = 0;
+  *(cfResult + 5) = 0;
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
