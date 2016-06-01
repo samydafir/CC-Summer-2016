@@ -142,6 +142,8 @@ int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
 int CHAR_LBRACKET     = '[';
 int CHAR_RBRACKET     = ']';
+int CHAR_BAR          = '|';
+int CHAR_AMPERSAND    = '&';
 
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
@@ -284,6 +286,9 @@ int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 int SYM_STRUCT       = 32; //STRUCT
 int SYM_ARROW        = 33; //->
+int SYM_AND          = 34; // &&
+int SYM_OR           = 35; // ||
+int SYM_NOT          = 36; // !
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -315,7 +320,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-    SYMBOLS = malloc(34 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(37 * SIZEOFINTSTAR);
 
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
@@ -1974,12 +1979,11 @@ int getSymbol() {
   } else if (character == CHAR_EXCLAMATION) {
       getCharacter();
 
-    if (character == CHAR_EQUAL)
+    if (character == CHAR_EQUAL) {
       getCharacter();
-    else
-      syntaxErrorCharacter(CHAR_EQUAL);
-
-    symbol = SYM_NOTEQ;
+      symbol = SYM_NOTEQ;
+    } else
+      symbol = SYM_NOT;
 
   } else if (character == CHAR_PERCENTAGE) {
     getCharacter();
@@ -1996,6 +2000,18 @@ int getSymbol() {
 
     symbol = SYM_RBRACKET;
 
+  } else if (character == CHAR_BAR){
+      getCharacter();
+      if(character == CHAR_BAR){
+        getCharacter();
+        symbol = SYM_OR;
+      }
+  } else if (character == CHAR_AMPERSAND){
+      getCharacter();
+      if(character == CHAR_AMPERSAND){
+        getCharacter();
+        symbol = SYM_AND;
+      }
   } else {
     printLineNumber((int*) "error", lineNumber);
     print((int*) "found unknown character ");
