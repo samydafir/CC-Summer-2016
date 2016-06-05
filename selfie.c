@@ -2200,6 +2200,21 @@ int isAndOrOr(){
     return 0;
 }
 
+void invertOperatorSymbol(int* cfResult){
+  if (*(cfResult + 3) == SYM_EQUALITY)
+    *(cfResult + 3) = SYM_NOTEQ;
+  else  if (*(cfResult + 3) == SYM_NOTEQ)
+    *(cfResult + 3) = SYM_EQUALITY;
+  else  if (*(cfResult + 3) == SYM_GT)
+    *(cfResult + 3) = SYM_LEQ;
+  else  if (*(cfResult + 3) == SYM_LEQ)
+    *(cfResult + 3) = SYM_GT;
+  else  if (*(cfResult + 3) == SYM_LT)
+    *(cfResult + 3) = SYM_GEQ;
+  else  if (*(cfResult + 3) == SYM_GEQ)
+    *(cfResult + 3) = SYM_LT;
+}
+
 int isPlusOrMinus() {
   if (symbol == SYM_MINUS)
     return 1;
@@ -2837,7 +2852,7 @@ int gr_factor(int* cfResult) {
     getSymbol();
       if(symbol == SYM_LPARENTHESIS){
         getSymbol();
-        type = gr_boolExpression(cfRsult);
+        type = gr_boolExpression(cfResult);
         *(cfResult + 4) = 0;
         if(symbol != SYM_RPARENTHESIS)
           syntaxErrorSymbol(SYM_RPARENTHESIS);
@@ -3334,7 +3349,7 @@ int gr_boolExpression(int* cfResult){
   while(isAndOrOr()){
 
   }
-
+return 0;
 }
 
 
@@ -4232,13 +4247,14 @@ void gr_cstar() {
   int* cfResult;
   int structSize;
   int* lastEntry;
-  cfResult = malloc(6 * SIZEOFINT);
-  *cfResult = 0;
-  *(cfResult + 1) = 0;
-  *(cfResult + 2) = 0;
-  *(cfResult + 3) = 0;
-  *(cfResult + 4) = 0;
-  *(cfResult + 5) = 0;
+  cfResult = malloc(7 * SIZEOFINT);
+  *cfResult = 0; //constant folding Result
+  *(cfResult + 1) = 0; // constant folding flag
+  *(cfResult + 2) = 0; // irgendwos mit array
+  *(cfResult + 3) = 0; // Symbol for boolean
+  *(cfResult + 4) = 0; // flag for boolean NOT
+  *(cfResult + 5) = 0; // True-Jump-List fixup
+  *(cfResult + 6) = 0; // False-Jump-List fixup
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
