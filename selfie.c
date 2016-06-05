@@ -2831,6 +2831,20 @@ int gr_factor(int* cfResult) {
     getSymbol();
 
     type = INT_T;
+  // NOT (!)
+  } else if (symbol == SYM_NOT) {
+    *(cfResult + 4) = 1;
+    getSymbol();
+      if(symbol == SYM_LPARENTHESIS){
+        getSymbol();
+        type = gr_boolExpression(cfRsult);
+        *(cfResult + 4) = 0;
+        if(symbol != SYM_RPARENTHESIS)
+          syntaxErrorSymbol(SYM_RPARENTHESIS);
+        else
+          getSymbol();
+      } else
+        syntaxErrorSymbol(SYM_LPARENTHESIS);
 
   // character?
   } else if (symbol == SYM_CHARACTER) {
