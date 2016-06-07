@@ -357,6 +357,9 @@ void initScanner () {
     *(SYMBOLS + SYM_RBRACKET)  		= (int) "]";
     *(SYMBOLS + SYM_STRUCT)  		  = (int) "struct";
     *(SYMBOLS + SYM_ARROW)        = (int) "->";
+    *(SYMBOLS + SYM_AND)          = (int) "&&";
+    *(SYMBOLS + SYM_OR)           = (int) "||";
+    *(SYMBOLS + SYM_NOT)          = (int) "!";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -1712,11 +1715,8 @@ int isCharacterLetter() {
 }
 
 int isCharacterDigit() {
-  if (character >= '0')
-    if (character <= '9')
-      return 1;
-    else
-      return 0;
+  if (character >= '0' && character <= '9')
+    return 1;
   else
     return 0;
 }
@@ -2215,6 +2215,8 @@ void invertOperatorSymbol(int* cfResult){
     *(cfResult + 3) = SYM_GEQ;
   else  if (*(cfResult + 3) == SYM_GEQ)
     *(cfResult + 3) = SYM_LT;
+
+  *(cfResult + 4) = 0;
 }
 
 int isPlusOrMinus() {
@@ -2724,7 +2726,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-
+  print((int*)"|");
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -2855,7 +2857,9 @@ int gr_factor(int* cfResult) {
       if(symbol == SYM_LPARENTHESIS){
         getSymbol();
         type = gr_boolExpression(cfResult);
-        *(cfResult + 4) = 0;
+        printInt(symbol);
+        println();
+        println();
         if(symbol != SYM_RPARENTHESIS)
           syntaxErrorSymbol(SYM_RPARENTHESIS);
         else
@@ -3371,6 +3375,14 @@ int gr_boolExpression(int* cfResult){
       *(listEntry + 1) = tempEntry;
       getSymbol();
       rtype = gr_expression(cfResult);
+      evaluateExpression(cfResult);
+
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      tfree(1);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+
 
     } else if (symbol == SYM_OR) {
       emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
@@ -3379,6 +3391,12 @@ int gr_boolExpression(int* cfResult){
       *(listEntry + 1) = tempEntry;
       getSymbol();
       rtype = gr_expression(cfResult);
+      evaluateExpression(cfResult);
+
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      tfree(1);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     }
 
@@ -7495,7 +7513,8 @@ struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntr
 }
 
 int main(int argc, int* argv) {
-
+  int x;
+  int y;
   initLibrary();
 
   initScanner();
@@ -7512,7 +7531,12 @@ int main(int argc, int* argv) {
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
 
-
+  x = 1 && 1;
+  y = 5;
+  printInt(x);
+  if((1 == 1)){
+    printInt(99999);
+  }
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
       print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
