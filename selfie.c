@@ -3245,11 +3245,9 @@ int gr_expression(int* cfResult) {
   int operatorSymbol;
   int rtype;
 
-
   // assert: n = allocatedTemporaries
 
   ltype = gr_shiftExpression(cfResult);
-
   if (*(cfResult + 1) == 1) {
     load_cfValue(*cfResult);
     *(cfResult + 1) = 0;
@@ -3262,8 +3260,6 @@ int gr_expression(int* cfResult) {
   if (isComparison()) {
     *(cfResult + 2) = 0;
     operatorSymbol = symbol;
-    //*(cfResult + 3) = symbol;
-
     getSymbol();
 
     rtype = gr_shiftExpression(cfResult);
@@ -3273,68 +3269,13 @@ int gr_expression(int* cfResult) {
     } else{
       *(cfResult + 2) = 0;
     }
+    *(cfResult + 3) = operatorSymbol;
 
     // assert: allocatedTemporaries == n + 2
 
     if (ltype != rtype)
       typeWarning(ltype, rtype);
 
-    if (operatorSymbol == SYM_EQUALITY) {
-      // subtract, if result = 0 then 1, else 0
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-
-      tfree(1);
-
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-
-    } else if (operatorSymbol == SYM_NOTEQ) {
-      // subtract, if result = 0 then 0, else 1
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-
-      tfree(1);
-
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-
-    } else if (operatorSymbol == SYM_LT) {
-      // set to 1 if a < b, else 0
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
-
-      tfree(1);
-
-    } else if (operatorSymbol == SYM_GT) {
-      // set to 1 if b < a, else 0
-      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
-
-      tfree(1);
-
-    } else if (operatorSymbol == SYM_LEQ) {
-      // if b < a set 0, else 1
-      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
-
-      tfree(1);
-
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-
-    } else if (operatorSymbol == SYM_GEQ) {
-      // if a < b set 0, else 1
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
-
-      tfree(1);
-
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-    }
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3407,29 +3348,54 @@ void evaluateExpression(int* cfResult){
 int gr_boolExpression(int* cfResult){
   int ltype;
   int rtype;
-  int* tempBranchAddress;
+  int tempEntry;
+  int* listEntry;
 
   ltype = gr_expression(cfResult);
+
   if(*(cfResult + 4) == 1){
     invertOperatorSymbol(cfResult);
   }
-  printInt(*(cfResult + 3));
-  printInt(allocatedTemporaries);
   evaluateExpression(cfResult);
-  printInt(allocatedTemporaries);
-  println();
 
 
+  while (isAndOrOr()) {
+    listEntry = malloc(SIZEOFINT + SIZEOFINTSTAR);
+    *listEntry = binaryLength;
+    *(listEntry + 1) = 0;
 
+    if (symbol == SYM_AND) {
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+      tempEntry = *(cfResult + 6);
+      *(cfResult + 6) = (int)listEntry;
+      *(listEntry + 1) = tempEntry;
+      getSymbol();
+      rtype = gr_expression(cfResult);
 
-  while(isAndOrOr()){
+    } else if (symbol == SYM_OR) {
+      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+      tempEntry = *(cfResult + 5);
+      *(cfResult + 5) = (int)listEntry;
+      *(listEntry + 1) = tempEntry;
+      getSymbol();
+      rtype = gr_expression(cfResult);
 
+    }
 
-
+    if (ltype != rtype)
+      typeWarning(ltype, rtype);
+  }
+  while(*(cfResult + 5) != 0){
+    listEntry = (int*)*(cfResult + 5);
+    fixup_relative(*listEntry);
+    *(cfResult + 5) = (int) *(listEntry + 1);
   }
 
-
-
+  while(*(cfResult + 6) != 0){
+    listEntry = (int*)*(cfResult + 6);
+    fixup_relative(*listEntry);
+    *(cfResult + 6) = (int) *(listEntry + 1);
+  }
 
   return ltype;
 }
