@@ -320,7 +320,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-    SYMBOLS = malloc(37 * SIZEOFINTSTAR);
+    SYMBOLS = malloc(38 * SIZEOFINTSTAR);
 
 
     *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
@@ -1982,12 +1982,12 @@ int getSymbol() {
 
   } else if (character == CHAR_EXCLAMATION) {
       getCharacter();
-
     if (character == CHAR_EQUAL) {
       getCharacter();
       symbol = SYM_NOTEQ;
-    } else
+    } else{
       symbol = SYM_NOT;
+    }
 
   } else if (character == CHAR_PERCENTAGE) {
     getCharacter();
@@ -2299,6 +2299,8 @@ int lookForFactor() {
   else if (symbol == SYM_STRING)
     return 0;
   else if (symbol == SYM_EOF)
+    return 0;
+  else if (symbol == SYM_NOT)
     return 0;
   else
     return 1;
@@ -2726,7 +2728,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-  print((int*)"|");
+
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -2857,9 +2859,6 @@ int gr_factor(int* cfResult) {
       if(symbol == SYM_LPARENTHESIS){
         getSymbol();
         type = gr_boolExpression(cfResult);
-        printInt(symbol);
-        println();
-        println();
         if(symbol != SYM_RPARENTHESIS)
           syntaxErrorSymbol(SYM_RPARENTHESIS);
         else
@@ -7513,8 +7512,7 @@ struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntr
 }
 
 int main(int argc, int* argv) {
-  int x;
-  int y;
+
   initLibrary();
 
   initScanner();
@@ -7531,12 +7529,6 @@ int main(int argc, int* argv) {
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
 
-  x = 1 && 1;
-  y = 5;
-  printInt(x);
-  if((1 == 1)){
-    printInt(99999);
-  }
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
       print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
