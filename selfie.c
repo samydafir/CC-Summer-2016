@@ -2863,8 +2863,26 @@ int gr_factor(int* cfResult) {
           syntaxErrorSymbol(SYM_RPARENTHESIS);
         else
           getSymbol();
+      } else if(symbol == SYM_INTEGER){
+        *(cfResult + 1) = 1;
+        if(literal == 0)
+          *cfResult = 1;
+         else
+          *cfResult = 0;
+
+        getSymbol();
+        type = INT_T;
+
+      } else if(symbol == SYM_IDENTIFIER){
+        type = load_variable(identifier);
+        getSymbol();
+        emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+        emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+
       } else
-        syntaxErrorSymbol(SYM_LPARENTHESIS);
+        syntaxErrorMessage((int*)"");
 
   // character?
   } else if (symbol == SYM_CHARACTER) {
@@ -7512,7 +7530,9 @@ struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntr
 }
 
 int main(int argc, int* argv) {
-
+  int x;
+  int y;
+  int z;
   initLibrary();
 
   initScanner();
@@ -7528,6 +7548,16 @@ int main(int argc, int* argv) {
   argv = argv + 1;
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
+
+  x = 0 || 0 || !0;
+  y = x && !x;
+  printInt(x);
+  printInt(y);
+  z = 110;
+  while(1 && !y && !0 && x && !(z < 100)){
+    z = z - 1;
+    printInt(9999);
+  }
 
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
