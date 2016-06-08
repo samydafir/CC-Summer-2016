@@ -7530,9 +7530,7 @@ struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntr
 }
 
 int main(int argc, int* argv) {
-  int x;
-  int y;
-  int z;
+
   initLibrary();
 
   initScanner();
@@ -7548,16 +7546,6 @@ int main(int argc, int* argv) {
   argv = argv + 1;
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
-
-  x = 0 || 0 || !0;
-  y = x && !x;
-  printInt(x);
-  printInt(y);
-  z = 110;
-  while(1 && !y && !0 && x && !(z < 100)){
-    z = z - 1;
-    printInt(9999);
-  }
 
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
