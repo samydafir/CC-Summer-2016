@@ -522,7 +522,8 @@ int  gr_simpleExpression(int* cfResult);
 int  gr_shiftExpression(int* cfResult);
 int  gr_expression(int* cfResult);
 void evaluateExpression(int* cfResult);
-int  gr_boolExpression(int* cfResult);
+int  gr_orExpression(int* cfResult);
+int  gr_andExpression(int* cfResult);
 void gr_while(int* cfResult);
 void gr_if(int* cfResult);
 void gr_return(int* cfResult, int returnType);
@@ -1700,16 +1701,8 @@ int findNextCharacter() {
 }
 
 int isCharacterLetter() {
-  if (character >= 'a')
-    if (character <= 'z')
-      return 1;
-    else
-      return 0;
-  else if (character >= 'A')
-    if (character <= 'Z')
-      return 1;
-    else
-      return 0;
+  if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z'))
+    return 1;
   else
     return 0;
 }
@@ -2651,7 +2644,7 @@ int gr_call(int* cfResult, int* procedure) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    gr_boolExpression(cfResult);
+    gr_orExpression(cfResult);
 
     // TODO: check if types/number of parameters is correct
 
@@ -2664,7 +2657,7 @@ int gr_call(int* cfResult, int* procedure) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      gr_boolExpression(cfResult);
+      gr_orExpression(cfResult);
 
       // push more parameters onto stack
       emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
@@ -2703,7 +2696,7 @@ int gr_call(int* cfResult, int* procedure) {
 int gr_selector(int* cfResult) {
   int type;
 
-  type = gr_boolExpression(cfResult);
+  type = gr_orExpression(cfResult);
 
   if (symbol != SYM_RBRACKET) {
     syntaxErrorUnexpected();
@@ -2755,7 +2748,7 @@ int gr_factor(int* cfResult) {
 
     // not a cast: "(" expression ")"
     } else {
-      type = gr_boolExpression(cfResult);
+      type = gr_orExpression(cfResult);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2782,7 +2775,7 @@ int gr_factor(int* cfResult) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_boolExpression(cfResult);
+      type = gr_orExpression(cfResult);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2858,7 +2851,7 @@ int gr_factor(int* cfResult) {
     getSymbol();
       if(symbol == SYM_LPARENTHESIS){
         getSymbol();
-        type = gr_boolExpression(cfResult);
+        type = gr_orExpression(cfResult);
         if(symbol != SYM_RPARENTHESIS)
           syntaxErrorSymbol(SYM_RPARENTHESIS);
         else
@@ -2906,7 +2899,7 @@ int gr_factor(int* cfResult) {
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    type = gr_boolExpression(cfResult);
+    type = gr_orExpression(cfResult);
 
     if (symbol == SYM_RPARENTHESIS)
       getSymbol();
@@ -3366,7 +3359,52 @@ void evaluateExpression(int* cfResult){
 
 
 
-int gr_boolExpression(int* cfResult){
+int gr_orExpression(int* cfResult){
+  int ltype;
+  int rtype;
+  int tempEntry;
+  int* listEntry;
+
+  ltype = gr_andExpression(cfResult);
+
+  if(*(cfResult + 4) == 1){
+    invertOperatorSymbol(cfResult);
+  }
+  evaluateExpression(cfResult);
+
+
+  while (symbol == SYM_OR) {
+    listEntry = malloc(SIZEOFINT + SIZEOFINTSTAR);
+    *listEntry = binaryLength;
+    *(listEntry + 1) = 0;
+
+    emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
+    tempEntry = *(cfResult + 5);
+    *(cfResult + 5) = (int)listEntry;
+    *(listEntry + 1) = tempEntry;
+    getSymbol();
+    rtype = gr_andExpression(cfResult);
+    evaluateExpression(cfResult);
+
+    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+    tfree(1);
+    emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+
+    if (ltype != rtype)
+      typeWarning(ltype, rtype);
+  }
+
+  while(*(cfResult + 5) != 0){
+    listEntry = (int*)*(cfResult + 5);
+    fixup_relative(*listEntry);
+    *(cfResult + 5) = (int) *(listEntry + 1);
+  }
+
+  return ltype;
+}
+
+int gr_andExpression(int* cfResult){
   int ltype;
   int rtype;
   int tempEntry;
@@ -3380,50 +3418,27 @@ int gr_boolExpression(int* cfResult){
   evaluateExpression(cfResult);
 
 
-  while (isAndOrOr()) {
+  while (symbol == SYM_AND) {
     listEntry = malloc(SIZEOFINT + SIZEOFINTSTAR);
     *listEntry = binaryLength;
     *(listEntry + 1) = 0;
 
-    if (symbol == SYM_AND) {
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
-      tempEntry = *(cfResult + 6);
-      *(cfResult + 6) = (int)listEntry;
-      *(listEntry + 1) = tempEntry;
-      getSymbol();
-      rtype = gr_expression(cfResult);
-      evaluateExpression(cfResult);
+    emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+    tempEntry = *(cfResult + 6);
+    *(cfResult + 6) = (int)listEntry;
+    *(listEntry + 1) = tempEntry;
+    getSymbol();
+    rtype = gr_expression(cfResult);
+    evaluateExpression(cfResult);
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-      tfree(1);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-
-
-    } else if (symbol == SYM_OR) {
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
-      tempEntry = *(cfResult + 5);
-      *(cfResult + 5) = (int)listEntry;
-      *(listEntry + 1) = tempEntry;
-      getSymbol();
-      rtype = gr_expression(cfResult);
-      evaluateExpression(cfResult);
-
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
-      tfree(1);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-
-    }
+    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+    tfree(1);
+    emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     if (ltype != rtype)
       typeWarning(ltype, rtype);
-  }
-  while(*(cfResult + 5) != 0){
-    listEntry = (int*)*(cfResult + 5);
-    fixup_relative(*listEntry);
-    *(cfResult + 5) = (int) *(listEntry + 1);
   }
 
   while(*(cfResult + 6) != 0){
@@ -3434,6 +3449,7 @@ int gr_boolExpression(int* cfResult){
 
   return ltype;
 }
+
 
 
 void gr_while(int* cfResult) {
@@ -3453,7 +3469,7 @@ void gr_while(int* cfResult) {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_boolExpression(cfResult);
+      gr_orExpression(cfResult);
 
       // do not know where to branch, fixup later
       brForwardToEnd = binaryLength;
@@ -3514,7 +3530,7 @@ void gr_if(int* cfResult) {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_boolExpression(cfResult);
+      gr_orExpression(cfResult);
 
       // if the "if" case is not true, we jump to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
@@ -3602,7 +3618,7 @@ void gr_return(int* cfResult, int returnType) {
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
-    type = gr_boolExpression(cfResult);
+    type = gr_orExpression(cfResult);
     if (returnType == VOID_T)
       typeWarning(type, returnType);
     else if (type != returnType)
@@ -3659,7 +3675,7 @@ void gr_statement(int* cfResult) {
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_boolExpression(cfResult);
+        rtype = gr_orExpression(cfResult);
 
         if (rtype != INT_T)
           typeWarning(INT_T, rtype);
@@ -3679,7 +3695,7 @@ void gr_statement(int* cfResult) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      ltype = gr_boolExpression(cfResult);
+      ltype = gr_orExpression(cfResult);
 
       if (ltype != INTSTAR_T)
         typeWarning(INTSTAR_T, ltype);
@@ -3691,7 +3707,7 @@ void gr_statement(int* cfResult) {
         if (symbol == SYM_ASSIGN) {
           getSymbol();
 
-          rtype = gr_boolExpression(cfResult);
+          rtype = gr_orExpression(cfResult);
 
           if (rtype != INT_T)
             typeWarning(INT_T, rtype);
@@ -3722,7 +3738,7 @@ void gr_statement(int* cfResult) {
 
       if (symbol == SYM_ASSIGN) {
         getSymbol();
-        rtype = gr_boolExpression(cfResult);
+        rtype = gr_orExpression(cfResult);
         if (ltype != rtype)
           syntaxErrorMessage((int*)"type mismatch!");
 
@@ -3746,7 +3762,7 @@ void gr_statement(int* cfResult) {
 
         getSymbol();
 
-        rtype = gr_boolExpression(cfResult);
+        rtype = gr_orExpression(cfResult);
 
         if (ltype != rtype)
           typeWarning(ltype, rtype);
@@ -3788,7 +3804,7 @@ void gr_statement(int* cfResult) {
 
       getSymbol();
 
-      rtype = gr_boolExpression(cfResult);
+      rtype = gr_orExpression(cfResult);
 
       if (ltype != rtype)
         typeWarning(ltype, rtype);
@@ -7530,7 +7546,10 @@ struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntr
 }
 
 int main(int argc, int* argv) {
-
+  int x;
+  int y;
+  int z;
+  int i;
   initLibrary();
 
   initScanner();
@@ -7546,6 +7565,19 @@ int main(int argc, int* argv) {
   argv = argv + 1;
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
+
+  i = 5;
+  x = 0;
+  y = 1;
+  z = !x && (y || x);
+  if(z == 0 || 1 == 0 || !(1 == 0)){
+    printInt(99999);
+  }
+  while((z && i < 10) || !y){
+    printInt(666666);
+    i = i + 1;
+  }
+
 
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
