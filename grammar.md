@@ -23,14 +23,14 @@ type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
-call             = identifier "(" [ expression { "," expression } ] ")" .
+call             = identifier "(" [orExpression { ","orExpression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
 
 factor           =   struct_acc |
-                    ( identifier "[" expression "]" ) |
+                    ( identifier "["orExpression "]" ) |
                     ( [ cast ]
-                    ( [ "*" ] ( identifier | "(" expression ")" ) |
+                    ( [ "*" ] ( identifier | "("orExpression ")" ) |
                       call |
                       literal |
                       """ { ascii_character } """ ) ) .
@@ -43,28 +43,32 @@ shiftExpression = simpleExpression { (  "<<" | ">>" ) simpleExression } .
 
 expression       = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ] .
 
-while            = "while" "(" expression ")"
+orExpression     = andExpression { || andExpression } .
+
+andExpression    = expression { && expression } .
+
+while            = "while" "("orExpression ")"
                              ( statement |
                                "{" { statement } "}" ) .
 
-if               = "if" "(" expression ")"
+if               = "if" "("orExpression ")"
                              ( statement |
                                "{" { statement } "}" )
                          [ "else"
                              ( statement |
                                "{" { statement } "}" ) ] .
 
-return           = "return" [ expression ] .
+return           = "return" [orExpression ] .
 
 statement        =  ( struct_acc |
-                    [ "*" ] identifier | "*" "(" expression ")" | identifier "[" expression "]") "="
-                      expression ";" |
+                    [ "*" ] identifier | "*" "("orExpression ")" | identifier "["orExpression "]") "="
+                     orExpression ";" |
                     call ";" |
                     while |
                     if |
                     return ";" .
 
-variable         = type identifier [ "[" expression "]" ] .
+variable         = type identifier [ "["orExpression "]" ] .
 
 struct_def       = "struct" identifier  "{" { variable | struct_dec } "}" ";" .
 
@@ -75,7 +79,7 @@ struct_acc       = identifier "->" identifier .
 procedure        =  struct_dec | struct_def | "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            =  struct_dec | struct_def | type identifier "[" expression "]" ";" |
+cstar            =  struct_dec | struct_def | type identifier "["orExpression "]" ";" |
                     { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
                     ( "void" | type ) identifier procedure } .
 ```
