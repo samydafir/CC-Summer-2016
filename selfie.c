@@ -112,6 +112,7 @@ void printString(int* s);
 int roundUp(int n, int m);
 
 int* malloc(int size);
+void free(int* entry);
 void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -821,6 +822,9 @@ void implementOpen();
 void emitMalloc();
 void implementMalloc();
 
+void emitFree();
+void implementFree();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int debug_read   = 0;
@@ -835,6 +839,9 @@ int SYSCALL_WRITE  = 4004;
 int SYSCALL_OPEN   = 4005;
 
 int SYSCALL_MALLOC = 4045;
+int SYSCALL_FREE   = 4042;
+
+int FREE_SIZE      = 10;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1068,6 +1075,8 @@ int* loadsPerAddress = (int*) 0; // number of executed loads per load operation
 
 int  stores           = 0;        // total number of executed memory stores
 int* storesPerAddress = (int*) 0; // number of executed stores per store operation
+
+int* freeList;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2721,7 +2730,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-
+  print((int*)"bla");
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -4587,6 +4596,7 @@ void selfie_compile() {
   emitWrite();
   emitOpen();
   emitMalloc();
+  emitFree();
 
   emitID();
   emitCreate();
@@ -5445,6 +5455,7 @@ void emitMalloc() {
 void implementMalloc() {
   int size;
   int bump;
+  int temp;
 
   if (debug_malloc) {
     print(binaryName);
@@ -5456,26 +5467,57 @@ void implementMalloc() {
 
   size = roundUp(*(registers+REG_A0), WORDSIZE);
 
-  bump = brk;
+  if (size <= FREE_SIZE && (int)freeList !=  0){
+    temp = (int) freeList;
+    freeList = (int*) *freeList;
+    *(registers+REG_V0) = temp;
+  } else{
 
-  if (bump + size >= *(registers+REG_SP))
-    throwException(EXCEPTION_HEAPOVERFLOW, 0);
-  else {
-    *(registers+REG_V0) = bump;
+    bump = brk;
 
-    brk = bump + size;
+    if (bump + size >= *(registers+REG_SP))
+      throwException(EXCEPTION_HEAPOVERFLOW, 0);
+    else {
+      *(registers+REG_V0) = bump;
 
-    if (debug_malloc) {
-      print(binaryName);
-      print((int*) ": actually mallocating ");
-      print(itoa(size, string_buffer, 10, 0, 0));
-      print((int*) " bytes at virtual address ");
-      print(itoa(bump, string_buffer, 16, 8, 0));
-      println();
+      brk = bump + size;
+
+      if (debug_malloc) {
+        print(binaryName);
+        print((int*) ": actually mallocating ");
+        print(itoa(size, string_buffer, 10, 0, 0));
+        print((int*) " bytes at virtual address ");
+        print(itoa(bump, string_buffer, 16, 8, 0));
+        println();
+      }
     }
   }
 }
 
+void emitFree() {
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "free", 0, PROCEDURE, INTSTAR_T, 0, binaryLength, 1, (int*) 0);
+
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // adresse des zu löschenden eintrags
+  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+
+  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_FREE);
+  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+
+  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+}
+
+void implementFree() {
+  int* temp;
+  int address;
+
+  address = *(registers+REG_A0);
+  temp = freeList;
+  freeList = (int*)address;
+  printInt((int)freeList);
+  *freeList = (int)temp;
+
+
+}
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -5949,6 +5991,8 @@ void fct_syscall() {
       implementDelete();
     else if (*(registers+REG_V0) == SYSCALL_MAP)
       implementMap();
+    else if (*(registers+REG_V0) == SYSCALL_FREE)
+      implementFree();
     else {
       pc = pc - WORDSIZE;
 
@@ -7562,6 +7606,8 @@ int main(int argc, int* argv) {
   argv = argv + 1;
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
+
+
 
   if (selfie(argc, (int*) argv) != 0) {
       print(selfieName);
