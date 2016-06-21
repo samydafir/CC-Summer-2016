@@ -5456,6 +5456,7 @@ void implementMalloc() {
   int size;
   int bump;
   int temp;
+  int address;
 
   if (debug_malloc) {
     print(binaryName);
@@ -5469,7 +5470,8 @@ void implementMalloc() {
 
   if (size <= FREE_SIZE && (int)freeList !=  0){
     temp = (int) freeList;
-    freeList = (int*) *freeList;
+    address = loadVirtualMemory(pt, temp);
+    freeList = (int*) address;
     *(registers+REG_V0) = temp;
   } else{
 
@@ -5513,10 +5515,7 @@ void implementFree() {
   address = *(registers+REG_A0);
   temp = freeList;
   freeList = (int*)address;
-  printInt((int)freeList);
-  *freeList = (int)temp;
-
-
+  storeVirtualMemory(pt, address, (int)temp);
 }
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -7584,11 +7583,6 @@ int selfie(int argc, int* argv) {
   return 0;
 }
 
-//test function for struct-function-parameters
-struct symbolTableEntry* test(struct symbolTableEntry* a, struct symbolTableEntry* b) {
-  return (struct symbolTableEntry*) 999999;
-}
-
 int main(int argc, int* argv) {
 
   initLibrary();
@@ -7601,12 +7595,10 @@ int main(int argc, int* argv) {
   initInterpreter();
 
   selfieName = (int*) *argv;
-
   argc = argc - 1;
   argv = argv + 1;
   print((int *)"This is the Starc Mipsdustries Selfie");
   println();
-
 
 
   if (selfie(argc, (int*) argv) != 0) {
