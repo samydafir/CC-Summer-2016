@@ -2730,7 +2730,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-  print((int*)"bla");
+
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -4156,6 +4156,7 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
   int* entry;
   int* structType;
   int structSize;
+  int* tempNextSymbolTableEntry;
 
   currentProcedureName = procedure;
 
@@ -4338,6 +4339,13 @@ void gr_procedure(int* cfResult, int* procedure, int returnType) {
     fixlink_absolute(returnBranches, binaryLength);
 
     returnBranches = 0;
+
+    //deallocate local symbol table
+    while(local_symbol_table != (int*)0){
+      tempNextSymbolTableEntry = (int*) *local_symbol_table;
+      free(local_symbol_table);
+      local_symbol_table = tempNextSymbolTableEntry;
+    }
 
     help_procedure_epilogue(numberOfParameters);
 
