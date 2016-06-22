@@ -841,7 +841,7 @@ int SYSCALL_OPEN   = 4005;
 int SYSCALL_MALLOC = 4045;
 int SYSCALL_FREE   = 4042;
 
-int FREE_SIZE      = 10;
+int FREE_SIZE      = 40;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -2730,7 +2730,7 @@ int gr_factor(int* cfResult) {
   *cfResult = 0;
   hasCast = 0;
   type = INT_T;
-
+  
   while (lookForFactor()) {
     syntaxErrorUnexpected();
 
@@ -2835,9 +2835,7 @@ int gr_factor(int* cfResult) {
       entry = getVariable(variableOrProcedureName);
       type = getType(entry);
 
-      emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), WORDSIZE);//statement_array
-      emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, FCT_MULTU);
-      emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
+      emitLeftShiftBy(2);
       emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), -getAddress(entry));
       emitRFormat(OP_SPECIAL, getScope(entry), currentTemporary(), currentTemporary(), FCT_SUBU);
       emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
@@ -5481,8 +5479,7 @@ void implementMalloc() {
     address = loadVirtualMemory(pt, temp);
     freeList = (int*) address;
     *(registers+REG_V0) = temp;
-  } else{
-
+  } else {
     bump = brk;
 
     if (bump + size >= *(registers+REG_SP))
